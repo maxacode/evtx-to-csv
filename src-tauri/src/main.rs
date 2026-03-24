@@ -61,16 +61,25 @@ fn init_signatures(app_handle: &tauri::AppHandle) -> (Vec<PatternSpec>, PathBuf)
     let doc_dir = dirs_next::document_dir().map(|d| d.join("evtx-to-csv"));
     let doc_path = doc_dir.as_ref().map(|d| d.join("signatures.json"));
 
-    let data_dir = app_handle.path_resolver().app_local_data_dir()
-        .unwrap_or_else(|| PathBuf::from("."));
-    let app_path = data_dir.join("signatures.json");
+    // Working directory (very important for `tauri dev`)
+    let cwd_path = PathBuf::from("signatures.json");
+    if cwd_path.exists() {
+        if let Ok(rules) = load_signatures_from_path(&cwd_path) {
+            let abs_path = cwd_path.canonicalize().unwrap_or(cwd_path);
+            eprintln!("[main] SUCCESS: Loaded {} rules from working directory: {:?}", rules.len(), abs_path);
+            return (rules, abs_path);
+        }
+    }
 
     // 2. Try loading from Priority 1: Documents folder
     if let Some(ref path) = doc_path {
-        if path.exists() {
-            if let Ok(rules) = load_signatures_from_path(path) {
-                eprintln!("[main] Loaded {} rules from Documents: {:?}", rules.len(), path);
-                return (rules, path.clone());
+...
+            match load_signatures_from_path(path) {
+                Ok(rules) => {
+                    eprintln!("[main] SUCCESS: Loaded {} rules from Documents", rules.len());
+                    return (rules, path.clone());
+                }
+                Err(e) => eprintln!("[main] ERR: Failed to load from Documents: {}", e),
             }
         }
     }
@@ -78,46 +87,39 @@ fn init_signatures(app_handle: &tauri::AppHandle) -> (Vec<PatternSpec>, PathBuf)
     // 3. Try loading from Priority 2: App Data folder
     if app_path.exists() {
         if let Ok(rules) = load_signatures_from_path(&app_path) {
-            eprintln!("[main] Loaded {} rules from AppData: {:?}", rules.len(), app_path);
+            eprintln!("[main] SUCCESS: Loaded {} rules from AppData", rules.len());
             return (rules, app_path);
         }
     }
 
-    // 4. Fallback: Seeding. If neither exists, try to copy bundled resource to Documents (preferred) or AppData.
+    // 4. Fallback: Seeding from Resource
     if let Some(resource_path) = app_handle.path_resolver().resolve_resource("signatures.json") {
+        eprintln!("[main] Found bundled resource at {:?}", resource_path);
         if let Ok(content) = std::fs::read_to_string(&resource_path) {
-            // Seed to Documents if possible
+            // Seed to Documents
             if let Some(ref path) = doc_path {
-                if let Some(parent) = doc_dir {
-                    let _ = std::fs::create_dir_all(&parent);
+                if let Some(ref parent) = doc_dir {
+                    let _ = std::fs::create_dir_all(parent);
                     if std::fs::write(path, &content).is_ok() {
                         if let Ok(rules) = load_signatures_from_path(path) {
-                            eprintln!("[main] Seeded and loaded rules to Documents: {:?}", path);
+                            eprintln!("[main] SUCCESS: Seeded and loaded from Documents: {:?}", path);
                             return (rules, path.clone());
                         }
+                    } else {
+                        eprintln!("[main] ERR: Failed to write to Documents path: {:?}", path);
                     }
                 }
             }
-            // Otherwise seed to AppData
-            let _ = std::fs::create_dir_all(&data_dir);
-            if std::fs::write(&app_path, &content).is_ok() {
-                if let Ok(rules) = load_signatures_from_path(&app_path) {
-                    eprintln!("[main] Seeded and loaded rules to AppData: {:?}", app_path);
-                    return (rules, app_path);
-                }
-            }
+        } else {
+            eprintln!("[main] ERR: Failed to read bundled resource content");
         }
+    } else {
+        eprintln!("[main] WARN: signatures.json resource not found in bundle");
     }
 
-    // Priority 5: working directory (useful during `tauri dev`)
-    let cwd_path = PathBuf::from("signatures.json");
-    if let Ok(rules) = load_signatures_from_path(&cwd_path) {
-        eprintln!("[main] Loaded {} rules from working directory", rules.len());
-        return (rules, cwd_path.canonicalize().unwrap_or(cwd_path));
-    }
-
-    eprintln!("[main] WARNING: signatures.json not found — enrichment will use event-ID rules only");
-    (Vec::new(), doc_path.unwrap_or(app_path))
+    eprintln!("[main] CRITICAL: No signatures.json found anywhere.");
+    let fallback = doc_path.unwrap_or_else(|| app_handle.path_resolver().app_local_data_dir().unwrap_or_else(|| PathBuf::from(".")).join("signatures.json"));
+    (Vec::new(), fallback)
 }
 
 /// Read and deserialize signatures.json from an explicit path.
