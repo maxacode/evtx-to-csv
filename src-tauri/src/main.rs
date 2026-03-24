@@ -73,7 +73,7 @@ fn init_signatures(app_handle: &tauri::AppHandle) -> (Vec<PatternSpec>, PathBuf)
 
     // 2. Try loading from Priority 1: Documents folder
     if let Some(ref path) = doc_path {
-...
+        if path.exists() {
             match load_signatures_from_path(path) {
                 Ok(rules) => {
                     eprintln!("[main] SUCCESS: Loaded {} rules from Documents", rules.len());
@@ -83,6 +83,10 @@ fn init_signatures(app_handle: &tauri::AppHandle) -> (Vec<PatternSpec>, PathBuf)
             }
         }
     }
+
+    let data_dir = app_handle.path_resolver().app_local_data_dir()
+        .unwrap_or_else(|| PathBuf::from("."));
+    let app_path = data_dir.join("signatures.json");
 
     // 3. Try loading from Priority 2: App Data folder
     if app_path.exists() {
