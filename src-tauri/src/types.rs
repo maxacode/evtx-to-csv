@@ -191,8 +191,26 @@ pub struct PatternSpec {
 // ---------------------------------------------------------------------------
 // SignaturesFile — top-level structure of signatures.json
 // ---------------------------------------------------------------------------
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SignaturesFile {
     pub version: String,
     pub patterns: Vec<PatternSpec>,
+}
+
+// ---------------------------------------------------------------------------
+// FileSummary
+//
+// Metadata summary for a loaded .evtx file, shown in the UI after import.
+// ---------------------------------------------------------------------------
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub struct FileSummary {
+    /// Earliest event timestamp in ISO 8601 (from first record)
+    pub start_time: Option<String>,
+    /// Latest event timestamp in ISO 8601 (from last record)
+    pub end_time: Option<String>,
+    /// Total number of records successfully parsed from the file
+    pub total_records: usize,
+    /// Top 5 Event IDs by frequency
+    pub event_ids: HashMap<u32, usize>,
 }

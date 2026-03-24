@@ -35,10 +35,19 @@
 -->
 
 <script lang="ts">
-  import { createEventDispatcher } from 'svelte';
+  import { createEventDispatcher, onMount } from 'svelte';
   import { writeTextFile } from '@tauri-apps/api/fs';
   import FilterPanel from './FilterPanel.svelte';
-  import { saveFileDialog, parseEvtx, exportCsv, runEnrichmentCheck, enrichRecords, openFile, openFolder } from '../tauri-api';
+  import {
+    saveFileDialog,
+    parseEvtx,
+    exportCsv,
+    runEnrichmentCheck,
+    enrichRecords,
+    openFile,
+    openFolder,
+    getEvtxSummary
+  } from '../tauri-api';
   import type { FileEntry } from '../types';
 
   // -------------------------------------------------------------------------
@@ -54,6 +63,25 @@
    * alongside the CSV after export.
    */
   export let runEnrichment: boolean;
+
+  // -------------------------------------------------------------------------
+  // Lifecycle
+  // -------------------------------------------------------------------------
+
+  onMount(() => {
+    if (!entry.summary) {
+      loadSummary();
+    }
+  });
+
+  async function loadSummary() {
+    try {
+      entry.summary = await getEvtxSummary(entry.path);
+      notifyUpdate();
+    } catch (err) {
+      console.error('Failed to load summary:', err);
+    }
+  }
 
   // -------------------------------------------------------------------------
   // Event dispatcher
@@ -316,6 +344,37 @@
   </header>
 
   <!-- -----------------------------------------------------------------------
+       File Summary section
+       ----------------------------------------------------------------------- -->
+  {#if entry.summary}
+    <div class="file-summary">
+      <div class="summary-row">
+        <span class="summary-item">
+          <strong>Start:</strong> {new Date(entry.summary.start_time || '').toLocaleString()}
+        </span>
+        <span class="summary-item">
+          <strong>End:</strong> {new Date(entry.summary.end_time || '').toLocaleString()}
+        </span>
+      </div>
+      <div class="summary-row">
+        <span class="summary-item">
+          <strong>Total Records:</strong> {entry.summary.total_records.toLocaleString()}
+        </span>
+      </div>
+      <div class="summary-ids">
+        <strong>Top Event IDs:</strong>
+        <div class="id-pills">
+          {#each Object.entries(entry.summary.event_ids) as [id, count]}
+            <span class="id-pill" title={`${count.toLocaleString()} occurrences`}>
+              {id} <small>({count})</small>
+            </span>
+          {/each}
+        </div>
+      </div>
+    </div>
+  {/if}
+
+  <!-- -----------------------------------------------------------------------
        Filters section (collapsible)
        ----------------------------------------------------------------------- -->
   <section class="filters-section">
@@ -513,6 +572,59 @@
     background: var(--color-bg);
     border-color: var(--color-accent);
     color: var(--color-accent);
+  }
+
+  /* -------------------------------------------------------------------------
+     File Summary section
+     ------------------------------------------------------------------------- */
+  .file-summary {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+    font-size: 11px;
+    color: var(--color-text-muted);
+  }
+
+  .summary-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+
+  .summary-item strong {
+    color: var(--color-text-dim);
+    margin-right: 4px;
+  }
+
+  .summary-ids {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .id-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .id-pill {
+    background: var(--color-bg-elevated);
+    border: 1px solid var(--color-border);
+    padding: 2px 8px;
+    border-radius: 12px;
+    color: var(--color-text);
+    font-weight: 600;
+  }
+
+  .id-pill small {
+    font-weight: 400;
+    color: var(--color-text-dim);
+    margin-left: 2px;
   }
 
   /* SVG file icon */

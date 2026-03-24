@@ -190,6 +190,19 @@ export async function parseEvtx(path: string, filters: FilterConfig): Promise<Ev
 }
 
 /**
+ * Quickly scan an .evtx file for record count and date ranges.
+ * @param path - Absolute path to the .evtx file
+ */
+export async function getEvtxSummary(path: string): Promise<import('./types').FileSummary> {
+  try {
+    return await invoke<import('./types').FileSummary>('get_evtx_summary', { path });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    throw new Error(`Failed to get summary for ${path}: ${message}`);
+  }
+}
+
+/**
  * Invokes the Rust `export_csv` command to write EventRecord data to a CSV file.
  *
  * The backend handles CSV formatting, header row generation, and field escaping.

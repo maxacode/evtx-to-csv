@@ -32,11 +32,64 @@ use std::collections::HashMap;
 use serde_json::Value;
 
 use crate::filters::apply_filters;
-use crate::types::{EventRecord, FilterConfig};
+use crate::types::{EventRecord, FilterConfig, FileSummary};
 
 // ---------------------------------------------------------------------------
 // Public entry point
 // ---------------------------------------------------------------------------
+
+/// Scan a .evtx file quickly to produce a metadata summary for the UI.
+///
+/// Returns record count, start/end timestamps, and top Event IDs.
+pub fn get_evtx_summary(path: &str) -> Result<FileSummary, String> {
+    let mut parser = evtx::EvtxParser::from_path(path)
+        .map_err(|e| format!("Failed to open .evtx file '{}': {}", path, e))?;
+
+    let mut total_records = 0;
+    let mut start_time = None;
+    let mut end_time = None;
+    let mut id_counts: HashMap<u32, usize> = HashMap::new();
+
+    for result in parser.records_json() {
+        match result {
+            Ok(record) => {
+                total_records += 1;
+
+                // Extract EventID and TimeCreated from the JSON string without a full EventRecord parse
+                // to keep the summary scan as fast as possible.
+                if let Ok(root) = serde_json::from_str::<Value>(&record.data) {
+                    if let Some(system) = root.get("Event").and_then(|e| e.get("System")) {
+                        // Time tracking
+                        if let Some(ts) = system.pointer("/TimeCreated/#attributes/SystemTime").and_then(Value::as_str) {
+                            if start_time.is_none() {
+                                start_time = Some(ts.to_string());
+                            }
+                            end_time = Some(ts.to_string());
+                        }
+
+                        // ID tracking
+                        if let Ok(id) = extract_event_id(system.get("EventID")) {
+                            *id_counts.entry(id).or_insert(0) += 1;
+                        }
+                    }
+                }
+            }
+            Err(_) => continue, // Skip corrupt records in summary
+        }
+    }
+
+    // Sort EventIDs by count and take the top 5
+    let mut counts_vec: Vec<(u32, usize)> = id_counts.into_iter().collect();
+    counts_vec.sort_by(|a, b| b.1.cmp(&a.1));
+    let top_ids = counts_vec.into_iter().take(5).collect();
+
+    Ok(FileSummary {
+        start_time,
+        end_time,
+        total_records,
+        event_ids: top_ids,
+    })
+}
 
 /// Parse a .evtx file at `path`, apply `filters`, return matching records.
 ///

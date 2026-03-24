@@ -161,6 +161,7 @@
       id: crypto.randomUUID(),
       path,
       name,
+      summary: null,
       filters: defaultFilters(),
       outputName,
       status: 'idle',

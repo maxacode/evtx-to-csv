@@ -135,6 +135,12 @@ fn parse_evtx(
     evtx_parser::parse_evtx_file(&path, &filters)
 }
 
+/// Quickly scan an .evtx for record count and date ranges.
+#[tauri::command]
+fn get_evtx_summary(path: String) -> Result<types::FileSummary, String> {
+    evtx_parser::get_evtx_summary(&path)
+}
+
 /// Write EventRecords to a CSV file at output_path.
 #[tauri::command]
 fn export_csv(
@@ -250,6 +256,7 @@ fn main() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            get_evtx_summary,
             parse_evtx,
             export_csv,
             run_enrichment_check,

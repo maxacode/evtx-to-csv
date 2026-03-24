@@ -149,6 +149,16 @@ export interface EventRecord {
 // ---------------------------------------------------------------------------
 
 /**
+ * Metadata summary for a loaded .evtx file.
+ */
+export interface FileSummary {
+  start_time: string | null;
+  end_time: string | null;
+  total_records: number;
+  event_ids: Record<number, number>;
+}
+
+/**
  * Frontend-only state object representing one loaded .evtx file.
  * This is NOT sent to the backend — it's purely for managing UI state.
  *
@@ -164,6 +174,9 @@ export interface FileEntry {
 
   /** Just the filename portion (e.g. "Security.evtx") — derived from path */
   name: string;
+
+  /** Quick summary of the file (dates, record count, common IDs) */
+  summary: FileSummary | null;
 
   /** The filter configuration for this specific file */
   filters: FilterConfig;
