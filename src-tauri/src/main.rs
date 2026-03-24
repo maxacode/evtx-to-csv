@@ -57,38 +57,65 @@ pub struct AppState {
 /// Returns (rules, path). On first run the file is copied from the resource
 /// bundle into the writable app local data directory.
 fn init_signatures(app_handle: &tauri::AppHandle) -> (Vec<PatternSpec>, PathBuf) {
-    // 1. Determine the paths we care about
+    // 1. Define paths
     let doc_dir = dirs_next::document_dir().map(|d| d.join("evtx-to-csv"));
     let doc_path = doc_dir.as_ref().map(|d| d.join("signatures.json"));
-
-    // Working directory (very important for `tauri dev`)
     let cwd_path = PathBuf::from("signatures.json");
-    if cwd_path.exists() {
-        if let Ok(rules) = load_signatures_from_path(&cwd_path) {
-            let abs_path = cwd_path.canonicalize().unwrap_or(cwd_path);
-            eprintln!("[main] SUCCESS: Loaded {} rules from working directory: {:?}", rules.len(), abs_path);
-            return (rules, abs_path);
-        }
-    }
-
-    // 2. Try loading from Priority 1: Documents folder
-    if let Some(ref path) = doc_path {
-        if path.exists() {
-            match load_signatures_from_path(path) {
-                Ok(rules) => {
-                    eprintln!("[main] SUCCESS: Loaded {} rules from Documents", rules.len());
-                    return (rules, path.clone());
-                }
-                Err(e) => eprintln!("[main] ERR: Failed to load from Documents: {}", e),
-            }
-        }
-    }
-
     let data_dir = app_handle.path_resolver().app_local_data_dir()
         .unwrap_or_else(|| PathBuf::from("."));
     let app_path = data_dir.join("signatures.json");
 
-    // 3. Try loading from Priority 2: App Data folder
+    // 2. Seeding Logic: If Documents version doesn't exist, try to create it
+    if let (Some(target), Some(parent)) = (&doc_path, &doc_dir) {
+        if !target.exists() {
+            eprintln!("[main] Documents file missing, attempting to seed...");
+            
+            // Try seeding from bundled resource
+            let mut seeded = false;
+            if let Some(res_path) = app_handle.path_resolver().resolve_resource("signatures.json") {
+                if let Ok(content) = std::fs::read_to_string(&res_path) {
+                    let _ = std::fs::create_dir_all(parent);
+                    if std::fs::write(target, content).is_ok() {
+                        eprintln!("[main] Seeded from resource to {:?}", target);
+                        seeded = true;
+                    }
+                }
+            }
+
+            // Fallback: seed from working directory (for dev)
+            if !seeded && cwd_path.exists() {
+                if let Ok(content) = std::fs::read_to_string(&cwd_path) {
+                    let _ = std::fs::create_dir_all(parent);
+                    if std::fs::write(target, content).is_ok() {
+                        eprintln!("[main] Seeded from CWD to {:?}", target);
+                    }
+                }
+            }
+        }
+    }
+
+    // 3. Loading Priority
+    
+    // Priority 1: Documents Folder (User editable)
+    if let Some(ref path) = doc_path {
+        if path.exists() {
+            if let Ok(rules) = load_signatures_from_path(path) {
+                eprintln!("[main] SUCCESS: Loaded {} rules from Documents: {:?}", rules.len(), path);
+                return (rules, path.clone());
+            }
+        }
+    }
+
+    // Priority 2: Working Directory (for dev if seeding failed)
+    if cwd_path.exists() {
+        if let Ok(rules) = load_signatures_from_path(&cwd_path) {
+            let abs_path = cwd_path.canonicalize().unwrap_or(cwd_path);
+            eprintln!("[main] SUCCESS: Loaded {} rules from CWD: {:?}", rules.len(), abs_path);
+            return (rules, abs_path);
+        }
+    }
+
+    // Priority 3: AppData
     if app_path.exists() {
         if let Ok(rules) = load_signatures_from_path(&app_path) {
             eprintln!("[main] SUCCESS: Loaded {} rules from AppData", rules.len());
@@ -96,34 +123,9 @@ fn init_signatures(app_handle: &tauri::AppHandle) -> (Vec<PatternSpec>, PathBuf)
         }
     }
 
-    // 4. Fallback: Seeding from Resource
-    if let Some(resource_path) = app_handle.path_resolver().resolve_resource("signatures.json") {
-        eprintln!("[main] Found bundled resource at {:?}", resource_path);
-        if let Ok(content) = std::fs::read_to_string(&resource_path) {
-            // Seed to Documents
-            if let Some(ref path) = doc_path {
-                if let Some(ref parent) = doc_dir {
-                    let _ = std::fs::create_dir_all(parent);
-                    if std::fs::write(path, &content).is_ok() {
-                        if let Ok(rules) = load_signatures_from_path(path) {
-                            eprintln!("[main] SUCCESS: Seeded and loaded from Documents: {:?}", path);
-                            return (rules, path.clone());
-                        }
-                    } else {
-                        eprintln!("[main] ERR: Failed to write to Documents path: {:?}", path);
-                    }
-                }
-            }
-        } else {
-            eprintln!("[main] ERR: Failed to read bundled resource content");
-        }
-    } else {
-        eprintln!("[main] WARN: signatures.json resource not found in bundle");
-    }
-
     eprintln!("[main] CRITICAL: No signatures.json found anywhere.");
-    let fallback = doc_path.unwrap_or_else(|| app_handle.path_resolver().app_local_data_dir().unwrap_or_else(|| PathBuf::from(".")).join("signatures.json"));
-    (Vec::new(), fallback)
+    let final_fallback = doc_path.unwrap_or(app_path);
+    (Vec::new(), final_fallback)
 }
 
 /// Read and deserialize signatures.json from an explicit path.
