@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "description": "EventViewer-to-CSV enrichment signature library. Edit and save, then click Refresh in the app.",
+  "description": "evtx-to-csv enrichment signature library. Edit and save, then click Refresh in the app.",
   "patterns": [
     {
       "name": "ps_encoded_command",

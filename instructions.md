@@ -1,10 +1,10 @@
 # Enrichment Signature Instructions
 
-This document explains how to add, modify, and manage detection signatures for the EventViewer-to-CSV enrichment engine.
+This document explains how to add, modify, and manage detection signatures for the evtx-to-csv enrichment engine.
 
 ## Unified Signature Format (`signatures.json`)
 
-All detections are now stored in a single JSON file: `signatures.json`. This file is located in the project root (for development) and is copied to your **Documents/eventviewer-to-csv/** folder for easy user access.
+All detections are now stored in a single JSON file: `signatures.json`. This file is located in the project root (for development) and is copied to your **Documents/evtx-to-csv/** folder for easy user access.
 
 ### Signature Structure
 
@@ -41,10 +41,10 @@ Each detection is a `PatternSpec` object inside the `patterns` array:
 
 ## How to Add a New Detection
 
-1.  **Open `signatures.json`**: Locate the file in your `Documents/eventviewer-to-csv/` folder.
+1.  **Open `signatures.json`**: Locate the file in your `Documents/evtx-to-csv/` folder.
 2.  **Add a new entry**: Add a new JSON object to the `patterns` array.
 3.  **Validate JSON**: Ensure you haven't missed any commas or quotes.
-4.  **Refresh in App**: Open EventViewer-to-CSV and click the **Refresh** button next to the signature count. The app will immediately reload the file from your Documents folder.
+4.  **Refresh in App**: Open evtx-to-csv and click the **Refresh** button next to the signature count. The app will immediately reload the file from your Documents folder.
 
 ### Example: Detecting `psexec` usage
 

@@ -57,9 +57,9 @@ pub struct AppState {
 /// Returns (rules, path). On first run the file is copied from the resource
 /// bundle into the writable app local data directory.
 fn init_signatures(app_handle: &tauri::AppHandle) -> (Vec<PatternSpec>, PathBuf) {
-    // Priority 1: Documents/eventviewer-to-csv/ (User-accessible, cross-platform)
-    if let Some(doc_dir) = tauri::api::path::document_dir() {
-        let doc_path = doc_dir.join("eventviewer-to-csv").join("signatures.json");
+    // Priority 1: Documents/evtx-to-csv/ (User-accessible, cross-platform)
+    if let Some(doc_dir) = dirs_next::document_dir() {
+        let doc_path = doc_dir.join("evtx-to-csv").join("signatures.json");
         if doc_path.exists() {
             if let Ok(rules) = load_signatures_from_path(&doc_path) {
                 eprintln!("[main] Loaded {} rules from Documents folder {:?}", rules.len(), doc_path);
