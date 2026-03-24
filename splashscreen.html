@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EventViewer to CSV</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      background: transparent;
+      overflow: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    }
+
+    .splash {
+      width: 400px;
+      height: 420px;
+      background: #0f1117;
+      border-radius: 18px;
+      border: 1px solid rgba(92, 124, 250, 0.3);
+      box-shadow: 0 32px 80px rgba(0, 0, 0, 0.7), 0 0 0 0.5px rgba(255,255,255,0.06);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+      animation: fadeIn 0.25s ease-out forwards;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: scale(0.94); }
+      to   { opacity: 1; transform: scale(1); }
+    }
+
+    .icon-wrapper {
+      width: 120px;
+      height: 120px;
+      border-radius: 26px;
+      overflow: hidden;
+      box-shadow: 0 8px 32px rgba(92, 124, 250, 0.35), 0 2px 8px rgba(0,0,0,0.5);
+    }
+
+    .icon-wrapper img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .title {
+      font-size: 22px;
+      font-weight: 700;
+      color: #e8eaf6;
+      letter-spacing: -0.3px;
+    }
+
+    .subtitle {
+      font-size: 13px;
+      color: rgba(140, 150, 180, 0.8);
+      letter-spacing: 0.4px;
+      text-transform: uppercase;
+      font-weight: 500;
+      margin-top: -10px;
+    }
+
+    .loader {
+      width: 160px;
+      height: 3px;
+      background: rgba(92, 124, 250, 0.15);
+      border-radius: 99px;
+      overflow: hidden;
+      margin-top: 8px;
+    }
+
+    .loader-bar {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #5c7cfa, #7c3aed);
+      border-radius: 99px;
+      animation: load 0.45s ease-out 0.05s forwards;
+    }
+
+    @keyframes load {
+      0%   { width: 0%; }
+      60%  { width: 75%; }
+      100% { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <div class="splash">
+    <div class="icon-wrapper">
+      <img src="/app-icon.png" alt="EventViewer to CSV icon" />
+    </div>
+    <div class="title">EventViewer → CSV</div>
+    <div class="subtitle">Incident Response Tool</div>
+    <div class="loader">
+      <div class="loader-bar"></div>
+    </div>
+  </div>
+</body>
+</html>

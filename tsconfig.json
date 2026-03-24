@@ -1,0 +1,70 @@
+{
+  // tsconfig.json — TypeScript compiler configuration for Svelte 4 + Tauri v1.
+  //
+  // Note: "@tsconfig/svelte" is intentionally NOT used as a base because it
+  // requires an extra devDependency and its defaults are already inlined here,
+  // giving us full visibility over every option in one file.
+  //
+  // "noEmit": true is required because Vite (via esbuild) owns transpilation.
+  // tsc is only used for type-checking (e.g. `svelte-check`, `tsc --noEmit`).
+
+  "compilerOptions": {
+    // Target modern JS — Vite/esbuild down-transpiles to the platform target
+    // defined in vite.config.ts (chrome105 / safari13) at bundle time.
+    "target": "ESNext",
+
+    // Use Object.defineProperty semantics for class fields, matching the
+    // behaviour expected by Svelte's store and class-based patterns.
+    "useDefineForClassFields": true,
+
+    // ESNext modules let tsc understand static import/export syntax without
+    // transforming it — Vite handles module resolution at build time.
+    "module": "ESNext",
+
+    // Allow `import data from './data.json'` — useful for bundled lookup tables.
+    "resolveJsonModule": true,
+
+    // Permit `import Foo from './Foo.svelte'` style imports. Vite resolves
+    // .svelte extensions; tsc only needs to not reject them.
+    "allowImportingTsExtensions": true,
+
+    // Type-check plain .js files in the project (e.g. svelte.config.js).
+    "allowJs": true,
+    "checkJs": true,
+
+    // Each file is compiled independently (matches esbuild's behaviour).
+    // Prevents use of const enum and namespace merging across files.
+    "isolatedModules": true,
+
+    // Treat every file as a module even without an import/export statement.
+    // Avoids accidental global scope pollution in .svelte script blocks.
+    "moduleDetection": "force",
+
+    // Do not write any .js / .d.ts output — Vite owns the emit step.
+    "noEmit": true,
+
+    // --- Strictness flags ---
+    // Enables: strictNullChecks, strictFunctionTypes, strictPropertyInitialization,
+    //          noImplicitAny, noImplicitThis, alwaysStrict, etc.
+    "strict": true,
+
+    // Catch unused imports and variables during type-check.
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+
+    // Require explicit `break` / `return` in every switch-case branch.
+    "noFallthroughCasesInSwitch": true,
+
+    // Required by Svelte's TypeScript plugin so tsc can resolve .svelte imports
+    // used inside other .svelte files or .ts modules.
+    "moduleResolution": "bundler",
+
+    // Needed alongside moduleResolution: bundler for ESNext modules.
+    "verbatimModuleSyntax": true
+  },
+
+  // Include all type declarations, TypeScript source files, and Svelte
+  // components under src/. Tauri Rust sources live in src-tauri/ and are
+  // intentionally excluded — they are type-checked by cargo, not tsc.
+  "include": ["src/**/*.d.ts", "src/**/*.ts", "src/**/*.svelte"]
+}

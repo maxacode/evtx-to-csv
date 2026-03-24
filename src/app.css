@@ -1,0 +1,269 @@
+/*
+ * app.css
+ * -------
+ * Global styles for the EventViewer → CSV Tauri application.
+ *
+ * This file is imported once in main.ts and applies to the entire app.
+ *
+ * Contents:
+ *   1. CSS custom properties (design tokens / theme variables)
+ *   2. Box-model and font reset
+ *   3. Body and root element styles
+ *   4. Typography helpers
+ *   5. Global button reset (component buttons use scoped styles)
+ *   6. Custom scrollbar styling for Webkit (matches dark theme)
+ *   7. Focus-visible accessibility outline
+ *   8. Selection highlight color
+ *   9. Utility: visually-hidden for screen-reader-only text
+ *
+ * Design philosophy:
+ *   - No external CSS framework — all styles are hand-written
+ *   - CSS custom properties make theming simple and consistent
+ *   - Colors chosen for readability and eye-comfort during long incident response sessions
+ */
+
+/* =============================================================================
+   1. Design tokens — CSS custom properties
+   ============================================================================= */
+
+:root {
+  /* --- Background layers (dark to slightly lighter) --- */
+  --color-bg: #0f1117;            /* Deepest background — window/body fill */
+  --color-bg-card: #1a1d27;       /* Card surfaces — slightly elevated */
+  --color-bg-elevated: #21253a;   /* Dropdowns, tooltips, modals */
+
+  /* --- Borders --- */
+  --color-border: #2d3148;        /* Subtle dividers and card outlines */
+
+  /* --- Accent (primary interactive color) --- */
+  --color-accent: #5c7cfa;        /* Buttons, active states, links */
+  --color-accent-hover: #748ffc;  /* Hover state for accent elements */
+
+  /* --- Semantic status colors --- */
+  --color-success: #40c057;       /* Export success, done state */
+  --color-warning: #fab005;       /* Warnings, parsing spinner */
+  --color-error: #fa5252;         /* Errors, failed state */
+
+  /* --- Text hierarchy --- */
+  --color-text: #e9ecef;          /* Primary body text */
+  --color-text-muted: #868e96;    /* Secondary labels, placeholders */
+  --color-text-dim: #495057;      /* Tertiary text, disabled states */
+
+  /* --- Border radius scale --- */
+  --radius: 8px;                  /* Cards, panels */
+  --radius-sm: 4px;               /* Buttons, inputs, badges */
+
+  /* --- Spacing scale (used as reference — not enforced as CSS vars) --- */
+  /* 4px micro-spacing, 8px standard gap, 12px section gap, 16px card padding, 24px section padding */
+
+  /* --- Typography --- */
+  --font-sans: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI',
+    'Helvetica Neue', Arial, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', Consolas,
+    'Courier New', monospace;
+
+  /* --- Shadow --- */
+  --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.4);
+  --shadow-elevated: 0 4px 24px rgba(0, 0, 0, 0.6);
+}
+
+/* =============================================================================
+   2. Box-model and font reset
+   ============================================================================= */
+
+*,
+*::before,
+*::after {
+  /* Use border-box everywhere — avoids padding/width math surprises */
+  box-sizing: border-box;
+
+  /* Remove all default margins and paddings */
+  margin: 0;
+  padding: 0;
+}
+
+/* =============================================================================
+   3. Body and root element
+   ============================================================================= */
+
+html {
+  /* Prevent layout shift from scrollbar appearing/disappearing */
+  overflow-y: scroll;
+  /* Smooth font rendering on macOS */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--color-text);
+  background-color: var(--color-bg);
+  /* Prevent text from being selectable by default (desktop app feel) */
+  /* Components opt-in to selection where needed (e.g. record tables) */
+  user-select: none;
+  /* Prevent native drag-and-drop on body text (we handle drop manually) */
+  -webkit-user-drag: none;
+}
+
+/* Svelte mounts into this element */
+#app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* =============================================================================
+   4. Typography helpers
+   ============================================================================= */
+
+h1, h2, h3, h4, h5, h6 {
+  line-height: 1.25;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+p {
+  line-height: 1.6;
+}
+
+/* Monospace for any data/code output */
+code, pre, kbd {
+  font-family: var(--font-mono);
+  font-size: 0.875em;
+}
+
+/* Allow text selection in elements that need it */
+input,
+textarea,
+pre,
+code {
+  user-select: text;
+}
+
+/* =============================================================================
+   5. Global button reset
+   ============================================================================= */
+
+/* Remove all native button styling — each component applies its own styles */
+button {
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  cursor: pointer;
+  border: none;
+  background: none;
+  padding: 0;
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  color: inherit;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
+/* =============================================================================
+   6. Input and select reset
+   ============================================================================= */
+
+input,
+select,
+textarea {
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  color: inherit;
+}
+
+/* Remove inner focus ring in Firefox */
+input::-moz-focus-inner {
+  border: 0;
+}
+
+/* =============================================================================
+   7. Custom scrollbars (Webkit/Blink — macOS/Windows in Tauri WebView)
+   ============================================================================= */
+
+/* Thin scrollbar track and thumb — matches dark theme */
+::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-bg);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #3d4260;
+}
+
+/* Hide scrollbar corner between horizontal and vertical tracks */
+::-webkit-scrollbar-corner {
+  background: var(--color-bg);
+}
+
+/* =============================================================================
+   8. Focus-visible accessibility
+   ============================================================================= */
+
+/*
+ * Use focus-visible so keyboard users see focus rings but mouse clicks don't
+ * show them. This is important for accessibility without visual clutter.
+ */
+:focus {
+  outline: none;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* =============================================================================
+   9. Text selection highlight
+   ============================================================================= */
+
+::selection {
+  /* Accent-tinted selection highlight that stays readable on dark background */
+  background-color: rgba(92, 124, 250, 0.35);
+  color: var(--color-text);
+}
+
+/* =============================================================================
+   10. Utility classes
+   ============================================================================= */
+
+/* Screen-reader-only text — visible to assistive tech, hidden visually */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* Prevent any element from receiving pointer events (disabling overlays etc.) */
+.pointer-none {
+  pointer-events: none;
+}
+
+/* Truncate text with ellipsis — apply to any container with a fixed width */
+.truncate {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

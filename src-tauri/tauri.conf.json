@@ -1,0 +1,79 @@
+{
+  "$schema": "../node_modules/@tauri-apps/cli/schema.json",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "beforeBuildCommand": "npm run build",
+    "devPath": "http://localhost:1420",
+    "distDir": "../dist"
+  },
+  "package": {
+    "productName": "evtx-to-csv",
+    "version": "0.1.0"
+  },
+  "tauri": {
+    "allowlist": {
+      "all": false,
+      "shell": {
+        "all": false,
+        "open": true
+      },
+      "dialog": {
+        "all": true,
+        "open": true,
+        "save": true
+      },
+      "fs": {
+        "all": true,
+        "scope": ["**"]
+      },
+      "window": {
+        "all": true
+      }
+    },
+    "bundle": {
+      "active": true,
+      "targets": "all",
+      "identifier": "com.evtx.tocsv",
+      "resources": [
+        "../signatures.json"
+      ],
+      "icon": [
+        "icons/32x32.png",
+        "icons/128x128.png",
+        "icons/128x128@2x.png",
+        "icons/icon.png",
+        "icons/icon.icns"
+      ]
+    },
+    "security": {
+      "csp": null
+    },
+    "macOSPrivateApi": true,
+    "windows": [
+      {
+        "label": "splash",
+        "title": "evtx-to-csv",
+        "url": "splashscreen.html",
+        "width": 400,
+        "height": 420,
+        "resizable": false,
+        "fullscreen": false,
+        "decorations": false,
+        "transparent": true,
+        "alwaysOnTop": true,
+        "center": true,
+        "visible": true
+      },
+      {
+        "label": "main",
+        "title": "evtx-to-csv",
+        "width": 1280,
+        "height": 860,
+        "resizable": true,
+        "fullscreen": false,
+        "visible": false,
+        "center": true
+      }
+    ]
+  }
+}

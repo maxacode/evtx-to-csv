@@ -1,0 +1,45 @@
+<!doctype html>
+<!--
+  index.html — Application shell loaded by Tauri's WebView.
+
+  Tauri v1 serves this file from the Vite dev server (port 1420) during
+  development and from the compiled dist/ directory in production builds.
+
+  The only script tag points to src/main.ts, which is the Svelte entry point.
+  Vite resolves the TypeScript extension at build time via the vite-plugin-svelte
+  transform pipeline, so no transpilation configuration is needed here.
+
+  CSP (Content Security Policy) is intentionally omitted from this file.
+  For a Tauri app the CSP should be set in src-tauri/tauri.conf.json under
+  `tauri > security > csp` so that Tauri can enforce it at the WebView level
+  rather than relying on a meta tag that JavaScript could remove.
+-->
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+
+  <!-- Placeholder favicon — replace vite.svg with the app icon asset -->
+  <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+
+  <!-- Responsive viewport — keeps layout consistent across display densities -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- Human-readable description used by the OS and screen readers -->
+  <meta name="description" content="EventViewer .evtx to CSV converter for incident response by Maks" />
+
+  <title>EventViewer to CSV by Maks</title>
+</head>
+
+<body>
+  <!-- Tauri app root — Svelte mounts the component tree here via src/main.ts -->
+  <div id="app"></div>
+
+  <!--
+      Module script: Vite processes this entry point, resolves all imports,
+      and injects hashed asset URLs in the production build.
+    -->
+  <script type="module" src="/src/main.ts"></script>
+</body>
+
+</html>

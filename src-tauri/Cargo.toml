@@ -1,0 +1,65 @@
+# =============================================================================
+# Cargo.toml — EventViewer-To-CSV Tauri Application Manifest
+#
+# This file declares the Rust package metadata and all crate dependencies
+# required for the Tauri v1 backend. Key external crates:
+#
+#   - tauri       : Desktop application framework (v1), enables dialog APIs
+#   - serde       : Serialization/deserialization framework (derives JSON traits)
+#   - serde_json  : JSON parsing used when decoding .evtx record payloads
+#   - evtx        : Windows Event Log (.evtx) parser crate (v0.8)
+#   - csv         : CSV writing crate for export functionality
+#   - chrono      : Date/time handling for timestamp parsing and filtering
+#   - regex       : Regular expression engine for enrichment pattern matching
+#
+# The `custom-protocol` feature is used by Tauri when building for production
+# to serve frontend assets via a custom URL scheme rather than a local dev server.
+# =============================================================================
+
+[package]
+name = "evtx-to-csv"
+version = "0.1.0"
+description = "EventViewer .evtx to CSV converter with IR enrichment"
+authors = []
+license = ""
+repository = ""
+default-run = "evtx-to-csv"
+edition = "2021"
+rust-version = "1.60"
+
+[build-dependencies]
+# tauri-build generates the necessary glue code at compile time (e.g., resource
+# embedding, manifest injection on Windows). Must match the tauri runtime version.
+tauri-build = { version = "1", features = [] }
+
+[dependencies]
+# Tauri v1 runtime — dialog-open/dialog-save enable the OS file picker dialogs
+# that the frontend uses to let users select .evtx files and output CSV paths.
+tauri = { version = "1", features = [ "shell-open", "window-all", "dialog-all", "fs-all", "macos-private-api"] }
+
+# serde + derive feature: automatically implement Serialize/Deserialize for our
+# custom structs (EventRecord, FilterConfig) so Tauri can marshal them over IPC.
+serde = { version = "1", features = ["derive"] }
+
+# serde_json: parse the JSON string returned by the evtx crate for each record.
+serde_json = "1"
+
+# evtx v0.8: parses Windows .evtx binary files and emits records as JSON strings.
+evtx = "0.8"
+
+# csv v1: streaming CSV writer; avoids loading all rows into memory at once.
+csv = "1"
+
+# chrono: robust date/time library; used for ISO 8601 parsing and relative-day
+# calculations (e.g. "last 7 days" filter). The `serde` feature lets chrono types
+# be (de)serialized automatically if needed elsewhere.
+chrono = { version = "0.4", features = ["serde"] }
+
+# regex: compiled regular expressions used in the enrichment engine to scan
+# event fields against known-malicious patterns.
+regex = "1"
+
+[features]
+# Activated during `tauri build` — switches Tauri to serve assets via the
+# custom tauri:// protocol instead of the localhost dev server.
+custom-protocol = ["tauri/custom-protocol"]
