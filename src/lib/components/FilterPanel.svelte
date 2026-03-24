@@ -185,6 +185,12 @@
     notify();
   }
 
+  /** Toggle LLM optimization mode */
+  function handleLlmOptimized(event: Event) {
+    filters.llm_optimized = (event.target as HTMLInputElement).checked;
+    notify();
+  }
+
   // -------------------------------------------------------------------------
   // Reactive helpers for template bindings
   // -------------------------------------------------------------------------
@@ -370,6 +376,23 @@
         />
       </div>
     </div>
+  </div>
+
+  <!-- -----------------------------------------------------------------------
+       Section 4: LLM Optimization toggle
+       ----------------------------------------------------------------------- -->
+  <div class="filter-section llm-section">
+    <label class="llm-toggle" title="Aggressively trim noise and shorten strings to save LLM tokens">
+      <input
+        type="checkbox"
+        checked={filters.llm_optimized}
+        on:change={handleLlmOptimized}
+      />
+      <div class="llm-content">
+        <span class="llm-label">Optimize for LLM Analysis</span>
+        <span class="llm-hint">Filters noisy Event IDs, shortens paths, and drops empty columns.</span>
+      </div>
+    </label>
   </div>
 
 </div>
@@ -574,6 +597,57 @@
 
   /* Placeholder text color */
   .input::placeholder {
+    color: var(--color-text-dim);
+  }
+
+  /* -------------------------------------------------------------------------
+     LLM Optimization toggle
+     ------------------------------------------------------------------------- */
+  .llm-section {
+    border-top: 1px dashed var(--color-border);
+    padding-top: 12px;
+    margin-top: 4px;
+  }
+
+  .llm-toggle {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    cursor: pointer;
+    user-select: none;
+    background: rgba(92, 124, 250, 0.05);
+    border: 1px solid rgba(92, 124, 250, 0.15);
+    padding: 10px;
+    border-radius: var(--radius-sm);
+    transition: background 0.15s, border-color 0.15s;
+  }
+
+  .llm-toggle:hover {
+    background: rgba(92, 124, 250, 0.08);
+    border-color: rgba(92, 124, 250, 0.3);
+  }
+
+  .llm-toggle input {
+    margin-top: 3px;
+    width: 14px;
+    height: 14px;
+    cursor: pointer;
+  }
+
+  .llm-content {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .llm-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--color-accent);
+  }
+
+  .llm-hint {
+    font-size: 11px;
     color: var(--color-text-dim);
   }
 </style>

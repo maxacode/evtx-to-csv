@@ -146,8 +146,14 @@ fn get_evtx_summary(path: String) -> Result<types::FileSummary, String> {
 fn export_csv(
     records: Vec<types::EventRecord>,
     output_path: String,
+    filters: types::FilterConfig,
 ) -> Result<(), String> {
-    csv_exporter::export_to_csv(&records, &output_path)
+    let final_records = if filters.llm_optimized.unwrap_or(false) {
+        enrichment::optimize_for_llm(records)
+    } else {
+        records
+    };
+    csv_exporter::export_to_csv(&final_records, &output_path)
 }
 
 /// Scan records against all loaded signatures + event-ID rules; return Markdown report.

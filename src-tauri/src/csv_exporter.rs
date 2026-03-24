@@ -71,89 +71,98 @@ pub fn export_to_csv(records: &[EventRecord], output_path: &str) -> Result<(), S
 
     // Build the header as a Vec<&str> — csv::Writer::write_record accepts any
     // iterable of AsRef<[u8]>, so &str works fine here.
-    let mut header: Vec<String> = vec![
-        "timestamp".to_string(),
-        "event_id".to_string(),
-        "level".to_string(),
-        "channel".to_string(),
-        "computer".to_string(),
-        "username".to_string(),
-        "domain".to_string(),
-        "target_username".to_string(),
-        "target_domain".to_string(),
-        "process_id".to_string(),
-        "process_name".to_string(),
-        "ip_address".to_string(),
-        "port".to_string(),
-        "logon_type".to_string(),
-        "command_line".to_string(),
-        "parent_process".to_string(),
-        "workstation".to_string(),
-        "auth_package".to_string(),
+    let fixed_header: Vec<&str> = vec![
+        "timestamp", "event_id", "level", "channel", "computer", "username", "domain",
+        "target_username", "target_domain", "process_id", "process_name", "ip_address",
+        "port", "logon_type", "command_line", "parent_process", "workstation", "auth_package",
     ];
 
-    // Append extra field column names after the fixed columns
-    for key in &extra_keys_vec {
-        header.push(key.clone());
+    // Determine which columns have at least one value across all records
+    let mut active_fixed: Vec<bool> = vec![false; fixed_header.len()];
+    let mut active_extra: Vec<bool> = vec![false; extra_keys_vec.len()];
+
+    for record in records {
+        // Check fixed fields
+        let opt_check = |opt: &Option<String>| -> bool { opt.as_ref().map(|s| !s.is_empty()).unwrap_or(false) };
+        if !record.timestamp.is_empty() { active_fixed[0] = true; }
+        active_fixed[1] = true; // event_id
+        if !record.level.is_empty() { active_fixed[2] = true; }
+        if !record.channel.is_empty() { active_fixed[3] = true; }
+        if !record.computer.is_empty() { active_fixed[4] = true; }
+        if opt_check(&record.username) { active_fixed[5] = true; }
+        if opt_check(&record.domain) { active_fixed[6] = true; }
+        if opt_check(&record.target_username) { active_fixed[7] = true; }
+        if opt_check(&record.target_domain) { active_fixed[8] = true; }
+        if opt_check(&record.process_id) { active_fixed[9] = true; }
+        if opt_check(&record.process_name) { active_fixed[10] = true; }
+        if opt_check(&record.ip_address) { active_fixed[11] = true; }
+        if opt_check(&record.port) { active_fixed[12] = true; }
+        if opt_check(&record.logon_type) { active_fixed[13] = true; }
+        if opt_check(&record.command_line) { active_fixed[14] = true; }
+        if opt_check(&record.parent_process) { active_fixed[15] = true; }
+        if opt_check(&record.workstation) { active_fixed[16] = true; }
+        if opt_check(&record.auth_package) { active_fixed[17] = true; }
+
+        // Check extra fields
+        for (i, key) in extra_keys_vec.iter().enumerate() {
+            if let Some(val) = record.extra_fields.get(key) {
+                if !val.is_empty() && val != "-" && val != "0x0" {
+                    active_extra[i] = true;
+                }
+            }
+        }
+    }
+
+    // Build the final header by filtering out inactive columns
+    let mut final_header: Vec<String> = Vec::new();
+    for (i, &active) in active_fixed.iter().enumerate() {
+        if active { final_header.push(fixed_header[i].to_string()); }
+    }
+    for (i, &active) in active_extra.iter().enumerate() {
+        if active { final_header.push(extra_keys_vec[i].clone()); }
     }
 
     writer
-        .write_record(&header)
+        .write_record(&final_header)
         .map_err(|e| format!("Failed to write CSV header: {}", e))?;
 
     // -----------------------------------------------------------------------
-    // Write one data row per EventRecord
-    //
-    // The fixed columns are written in the same order as the header.
-    // Option<String> fields are unwrapped to "" when None so the CSV cell
-    // is empty rather than containing the Rust text "None".
+    // Write data rows
     // -----------------------------------------------------------------------
     for record in records {
-        // Helper closure: unwrap an Option<&String> to &str, defaulting to "".
-        // Using a closure avoids repeating the pattern for every optional field.
-        let opt_str = |opt: &Option<String>| -> String {
-            opt.as_deref().unwrap_or("").to_string()
-        };
+        let opt_str = |opt: &Option<String>| -> String { opt.as_deref().unwrap_or("").to_string() };
+        let mut row: Vec<String> = Vec::new();
 
-        // Build the row with the 18 fixed columns in API-contract order.
-        let mut row: Vec<String> = vec![
-            record.timestamp.clone(),          // timestamp
-            record.event_id.to_string(),       // event_id (u32 → String)
-            record.level.clone(),              // level
-            record.channel.clone(),            // channel
-            record.computer.clone(),           // computer
-            opt_str(&record.username),         // username (SubjectUserName)
-            opt_str(&record.domain),           // domain (SubjectDomainName)
-            opt_str(&record.target_username),  // target_username (TargetUserName)
-            opt_str(&record.target_domain),    // target_domain (TargetDomainName)
-            opt_str(&record.process_id),       // process_id
-            opt_str(&record.process_name),     // process_name
-            opt_str(&record.ip_address),       // ip_address
-            opt_str(&record.port),             // port
-            opt_str(&record.logon_type),       // logon_type
-            opt_str(&record.command_line),     // command_line
-            opt_str(&record.parent_process),   // parent_process
-            opt_str(&record.workstation),      // workstation
-            opt_str(&record.auth_package),     // auth_package
-        ];
+        // Fixed fields (only if active)
+        if active_fixed[0] { row.push(record.timestamp.clone()); }
+        if active_fixed[1] { row.push(record.event_id.to_string()); }
+        if active_fixed[2] { row.push(record.level.clone()); }
+        if active_fixed[3] { row.push(record.channel.clone()); }
+        if active_fixed[4] { row.push(record.computer.clone()); }
+        if active_fixed[5] { row.push(opt_str(&record.username)); }
+        if active_fixed[6] { row.push(opt_str(&record.domain)); }
+        if active_fixed[7] { row.push(opt_str(&record.target_username)); }
+        if active_fixed[8] { row.push(opt_str(&record.target_domain)); }
+        if active_fixed[9] { row.push(opt_str(&record.process_id)); }
+        if active_fixed[10] { row.push(opt_str(&record.process_name)); }
+        if active_fixed[11] { row.push(opt_str(&record.ip_address)); }
+        if active_fixed[12] { row.push(opt_str(&record.port)); }
+        if active_fixed[13] { row.push(opt_str(&record.logon_type)); }
+        if active_fixed[14] { row.push(opt_str(&record.command_line)); }
+        if active_fixed[15] { row.push(opt_str(&record.parent_process)); }
+        if active_fixed[16] { row.push(opt_str(&record.workstation)); }
+        if active_fixed[17] { row.push(opt_str(&record.auth_package)); }
 
-        // Append the extra field values in the same order as the header columns.
-        // For each extra_key, look it up in this record's extra_fields map.
-        // If the key doesn't exist in this record, write an empty string.
-        for key in &extra_keys_vec {
-            let value = record
-                .extra_fields
-                .get(key.as_str())
-                .cloned()
-                .unwrap_or_default(); // "" for missing keys
-            row.push(value);
+        // Extra fields (only if active)
+        for (i, key) in extra_keys_vec.iter().enumerate() {
+            if active_extra[i] {
+                row.push(record.extra_fields.get(key).cloned().unwrap_or_default());
+            }
         }
 
-        // Write the assembled row. The csv crate quotes any field that contains
-        // commas, double-quotes, or newlines, so we don't need to escape manually.
         writer
             .write_record(&row)
-            .map_err(|e| format!("Failed to write CSV row for event {}: {}", record.event_id, e))?;
+            .map_err(|e| format!("Failed to write CSV row: {}", e))?;
     }
 
     // Flush the internal write buffer to disk. Without this, the last few rows

@@ -210,13 +210,19 @@ export async function getEvtxSummary(path: string): Promise<import('./types').Fi
  *
  * @param records    - Array of EventRecord objects to serialize
  * @param outputPath - Absolute path where the CSV file should be written
+ * @param filters    - FilterConfig used to determine if LLM optimization is needed
  * @throws Error with descriptive message on backend failure
  */
-export async function exportCsv(records: EventRecord[], outputPath: string): Promise<void> {
+export async function exportCsv(
+  records: EventRecord[],
+  outputPath: string,
+  filters: FilterConfig
+): Promise<void> {
   try {
     await invoke<void>('export_csv', {
       records,
       outputPath,
+      filters,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

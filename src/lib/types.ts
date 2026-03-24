@@ -65,6 +65,9 @@ export interface FilterConfig {
    * If both are set, the backend checks for an exact match.
    */
   custom_field_value: string | null;
+
+  /** When true, applies aggressive filtering and shortening for LLM analysis */
+  llm_optimized: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -230,5 +233,6 @@ export function defaultFilters(): FilterConfig {
     username: null,
     custom_field_name: null,
     custom_field_value: null,
+    llm_optimized: false,
   };
 }

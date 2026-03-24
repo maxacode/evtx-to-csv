@@ -163,6 +163,9 @@ pub struct FilterConfig {
     /// Value to match inside the field named by `custom_field_name`.
     /// Case-insensitive partial match. Ignored if `custom_field_name` is None.
     pub custom_field_value: Option<String>,
+
+    /// When true, applies aggressive filtering and shortening for LLM analysis
+    pub llm_optimized: Option<bool>,
 }
 
 // ---------------------------------------------------------------------------

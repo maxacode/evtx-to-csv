@@ -198,7 +198,7 @@
       }
 
       // Step 3: Write the CSV file to the user-chosen path
-      await exportCsv(records, savePath);
+      await exportCsv(records, savePath, entry.filters);
 
       // Step 4: If the report toggle is on, run the enrichment check.
       // Built-in signatures from signatures.json are loaded at startup.

@@ -59,6 +59,9 @@ chrono = { version = "0.4", features = ["serde"] }
 # event fields against known-malicious patterns.
 regex = "1"
 
+# dirs-next: cross-platform path resolution for getting the Documents folder
+dirs-next = "2.0"
+
 [features]
 # Activated during `tauri build` — switches Tauri to serve assets via the
 # custom tauri:// protocol instead of the localhost dev server.

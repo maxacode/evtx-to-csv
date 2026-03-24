@@ -762,6 +762,96 @@ pub fn enrich_records(mut records: Vec<EventRecord>) -> Vec<EventRecord> {
     records
 }
 
+// =============================================================================
+// optimize_for_llm — aggressive noise reduction and string shortening
+// =============================================================================
+
+pub fn optimize_for_llm(records: Vec<EventRecord>) -> Vec<EventRecord> {
+    // 1. Start with standard enrichment (dedup + XML cleanup)
+    let mut records = enrich_records(records);
+
+    // 2. Aggressive Filtering
+    records.retain(|r| {
+        let eid = r.event_id;
+
+        // Noisy Event IDs to drop entirely
+        let noise_ids = [
+            5379, 5378, // Vault Credential Read (Adobe noise)
+            4634,       // Logoff (redundant)
+            4672,       // Special Privileges (redundant with 4624)
+            5156, 5158, // WFP Connection/Bind (massive network noise)
+            4768, 4769, // Kerberos TGT/Ticket (high volume AD noise)
+            5058, 5061, // Crypto Key Ops (background noise)
+            4656, 4658, // Handle Request/Close (object access noise)
+        ];
+        if noise_ids.contains(&eid) { return false; }
+
+        // Filter 4624 (Logon): drop Type 5/0 for SYSTEM (service logons)
+        if eid == 4624 {
+            let lt = r.logon_type.as_deref().unwrap_or("");
+            let user = r.username.as_deref().unwrap_or("").to_lowercase();
+            if (lt.starts_with('5') || lt.starts_with('0')) && (user.contains("system") || user.contains("$")) {
+                return false;
+            }
+        }
+
+        // Filter 4688 (Process Creation): drop noise processes from System32
+        if eid == 4688 || eid == 1 { // Sysmon 1 or Security 4688
+            if let Some(ref path) = r.process_name {
+                let p = path.to_lowercase();
+                if p.contains("\\system32\\") {
+                    if p.ends_with("\\conhost.exe") || p.ends_with("\\taskhostw.exe") || p.ends_with("\\searchindexer.exe") {
+                        return false;
+                    }
+                }
+            }
+        }
+
+        true
+    });
+
+    // 3. String Shortening / Normalization
+    for r in records.iter_mut() {
+        let shorten = |s: String| -> String {
+            s.replace("NT AUTHORITY\\SYSTEM", "SYSTEM")
+             .replace("NT AUTHORITY\\NETWORK SERVICE", "NET_SVC")
+             .replace("NT AUTHORITY", "NT")
+             .replace("C:\\Windows\\System32\\", "\\S32\\")
+             .replace("C:\\Windows\\SysWOW64\\", "\\S64\\")
+             .replace("C:\\Program Files\\", "\\PF\\")
+             .replace("AzureAD", "AAD")
+             .replace("Information", "Info")
+             .replace("00000000-0000-0000-0000-000000000000", "0-GUID")
+             .replace("Microsoft-Windows-Security-Auditing", "Sec-Audit")
+        };
+
+        if let Some(ref mut v) = r.username { *v = shorten(v.clone()); }
+        if let Some(ref mut v) = r.domain { *v = shorten(v.clone()); }
+        if let Some(ref mut v) = r.target_username { *v = shorten(v.clone()); }
+        if let Some(ref mut v) = r.target_domain { *v = shorten(v.clone()); }
+        if let Some(ref mut v) = r.process_name { *v = shorten(v.clone()); }
+        if let Some(ref mut v) = r.command_line { *v = shorten(v.clone()); }
+        if let Some(ref mut v) = r.parent_process { *v = shorten(v.clone()); }
+        r.computer = shorten(r.computer.clone());
+        r.level = shorten(r.level.clone());
+        r.channel = shorten(r.channel.clone());
+
+        // Extra fields pruning & shortening
+        let mut new_extra = HashMap::new();
+        for (k, v) in r.extra_fields.drain() {
+            // Drop low-value extra fields (noise)
+            let k_lower = k.to_lowercase();
+            if k_lower == "subjectlogonid" || k_lower == "targetlogonid" || k_lower == "privilegelist" {
+                continue;
+            }
+            new_extra.insert(k, shorten(v));
+        }
+        r.extra_fields = new_extra;
+    }
+
+    records
+}
+
 // ---------------------------------------------------------------------------
 // parse_task_xml — extract IR fields from Windows Task Scheduler XML
 // ---------------------------------------------------------------------------
