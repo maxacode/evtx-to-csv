@@ -57,52 +57,59 @@ pub struct AppState {
 /// Returns (rules, path). On first run the file is copied from the resource
 /// bundle into the writable app local data directory.
 fn init_signatures(app_handle: &tauri::AppHandle) -> (Vec<PatternSpec>, PathBuf) {
-    // Priority 1: Documents/evtx-to-csv/ (User-accessible, cross-platform)
-    if let Some(doc_dir) = dirs_next::document_dir() {
-        let doc_path = doc_dir.join("evtx-to-csv").join("signatures.json");
-        if doc_path.exists() {
-            if let Ok(rules) = load_signatures_from_path(&doc_path) {
-                eprintln!("[main] Loaded {} rules from Documents folder {:?}", rules.len(), doc_path);
-                return (rules, doc_path);
-            }
-        }
-    }
+    // 1. Determine the paths we care about
+    let doc_dir = dirs_next::document_dir().map(|d| d.join("evtx-to-csv"));
+    let doc_path = doc_dir.as_ref().map(|d| d.join("signatures.json"));
 
-    // Priority 2: app local data dir (writable, user-editable copy)
     let data_dir = app_handle.path_resolver().app_local_data_dir()
         .unwrap_or_else(|| PathBuf::from("."));
-    let user_path = data_dir.join("signatures.json");
+    let app_path = data_dir.join("signatures.json");
 
-    // If the user copy doesn't exist yet, seed it from the bundled resource
-    if !user_path.exists() {
-        if let Some(resource_path) = app_handle.path_resolver()
-            .resolve_resource("signatures.json")
-        {
-            if let Ok(content) = std::fs::read_to_string(&resource_path) {
-                let _ = std::fs::create_dir_all(&data_dir);
-                let _ = std::fs::write(&user_path, &content);
-                eprintln!("[main] Seeded signatures.json to {:?}", user_path);
+    // 2. Try loading from Priority 1: Documents folder
+    if let Some(ref path) = doc_path {
+        if path.exists() {
+            if let Ok(rules) = load_signatures_from_path(path) {
+                eprintln!("[main] Loaded {} rules from Documents: {:?}", rules.len(), path);
+                return (rules, path.clone());
             }
         }
     }
 
-    // Try to load from user copy
-    if let Ok(rules) = load_signatures_from_path(&user_path) {
-        eprintln!("[main] Loaded {} rules from user copy {:?}", rules.len(), user_path);
-        return (rules, user_path);
-    }
-
-    // Priority 3: Tauri resource dir (bundled binary)
-    if let Some(resource_path) = app_handle.path_resolver()
-        .resolve_resource("signatures.json")
-    {
-        if let Ok(rules) = load_signatures_from_path(&resource_path) {
-            eprintln!("[main] Loaded {} rules from resource dir", rules.len());
-            return (rules, resource_path);
+    // 3. Try loading from Priority 2: App Data folder
+    if app_path.exists() {
+        if let Ok(rules) = load_signatures_from_path(&app_path) {
+            eprintln!("[main] Loaded {} rules from AppData: {:?}", rules.len(), app_path);
+            return (rules, app_path);
         }
     }
 
-    // Priority 4: working directory (useful during `tauri dev`)
+    // 4. Fallback: Seeding. If neither exists, try to copy bundled resource to Documents (preferred) or AppData.
+    if let Some(resource_path) = app_handle.path_resolver().resolve_resource("signatures.json") {
+        if let Ok(content) = std::fs::read_to_string(&resource_path) {
+            // Seed to Documents if possible
+            if let Some(ref path) = doc_path {
+                if let Some(parent) = doc_dir {
+                    let _ = std::fs::create_dir_all(&parent);
+                    if std::fs::write(path, &content).is_ok() {
+                        if let Ok(rules) = load_signatures_from_path(path) {
+                            eprintln!("[main] Seeded and loaded rules to Documents: {:?}", path);
+                            return (rules, path.clone());
+                        }
+                    }
+                }
+            }
+            // Otherwise seed to AppData
+            let _ = std::fs::create_dir_all(&data_dir);
+            if std::fs::write(&app_path, &content).is_ok() {
+                if let Ok(rules) = load_signatures_from_path(&app_path) {
+                    eprintln!("[main] Seeded and loaded rules to AppData: {:?}", app_path);
+                    return (rules, app_path);
+                }
+            }
+        }
+    }
+
+    // Priority 5: working directory (useful during `tauri dev`)
     let cwd_path = PathBuf::from("signatures.json");
     if let Ok(rules) = load_signatures_from_path(&cwd_path) {
         eprintln!("[main] Loaded {} rules from working directory", rules.len());
@@ -110,7 +117,7 @@ fn init_signatures(app_handle: &tauri::AppHandle) -> (Vec<PatternSpec>, PathBuf)
     }
 
     eprintln!("[main] WARNING: signatures.json not found — enrichment will use event-ID rules only");
-    (Vec::new(), user_path)
+    (Vec::new(), doc_path.unwrap_or(app_path))
 }
 
 /// Read and deserialize signatures.json from an explicit path.

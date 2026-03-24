@@ -196,6 +196,7 @@ pub struct PatternSpec {
 // ---------------------------------------------------------------------------
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SignaturesFile {
+    #[allow(dead_code)]
     pub version: String,
     pub patterns: Vec<PatternSpec>,
 }
