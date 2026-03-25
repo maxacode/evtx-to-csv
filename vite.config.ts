@@ -48,9 +48,9 @@ export default defineConfig({
   envPrefix: ['VITE_', 'TAURI_'],
 
   server: {
-    // Must match tauri.conf.json > build > devPath: "http://localhost:1420"
-    port: 1420,
-    // Exit immediately if port 1420 is already occupied rather than silently
+    // Must match tauri.conf.json > build > devPath: "http://localhost:1421"
+    port: 1421,
+    // Exit immediately if port 1421 is already occupied rather than silently
     // binding to a different port and causing a confusing Tauri connection error.
     strictPort: true,
   },

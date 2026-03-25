@@ -61,8 +61,9 @@ fn init_signatures(app_handle: &tauri::AppHandle) -> (Vec<PatternSpec>, PathBuf)
     let doc_dir = dirs_next::document_dir().map(|d| d.join("evtx-to-csv"));
     let doc_path = doc_dir.as_ref().map(|d| d.join("signatures.json"));
     
-    // In `tauri dev`, CWD is usually `src-tauri`. Root is `..`
-    let cwd_path = PathBuf::from("..").join("signatures.json");
+    // In `tauri dev`, CWD is usually `src-tauri`. Root is `..` (if we kept the root version)
+    // But we also have a copy in `src-tauri` now.
+    let cwd_path = PathBuf::from("signatures.json");
     
     let data_dir = app_handle.path_resolver().app_local_data_dir()
         .unwrap_or_else(|| PathBuf::from("."));
@@ -73,11 +74,14 @@ fn init_signatures(app_handle: &tauri::AppHandle) -> (Vec<PatternSpec>, PathBuf)
         if !target.exists() {
             // Try seeding from bundled resource
             let mut seeded = false;
+            
+            // Try resolving as "signatures.json" (matches tauri.conf.json resources)
             if let Some(res_path) = app_handle.path_resolver().resolve_resource("signatures.json") {
                 if let Ok(content) = std::fs::read_to_string(&res_path) {
                     let _ = std::fs::create_dir_all(parent);
                     if std::fs::write(target, content).is_ok() {
                         seeded = true;
+                        eprintln!("[main] Seeded signatures.json from resource to {:?}", target);
                     }
                 }
             }
@@ -86,7 +90,10 @@ fn init_signatures(app_handle: &tauri::AppHandle) -> (Vec<PatternSpec>, PathBuf)
             if !seeded && cwd_path.exists() {
                 if let Ok(content) = std::fs::read_to_string(&cwd_path) {
                     let _ = std::fs::create_dir_all(parent);
-                    let _ = std::fs::write(target, content);
+                    if std::fs::write(target, content).is_ok() {
+                        seeded = true;
+                        eprintln!("[main] Seeded signatures.json from CWD to {:?}", target);
+                    }
                 }
             }
         }
@@ -109,6 +116,16 @@ fn init_signatures(app_handle: &tauri::AppHandle) -> (Vec<PatternSpec>, PathBuf)
         if let Ok(rules) = load_signatures_from_path(&cwd_path) {
             let abs_path = cwd_path.canonicalize().unwrap_or(cwd_path);
             eprintln!("[main] Loaded {} rules from CWD: {:?}", rules.len(), abs_path);
+            return (rules, abs_path);
+        }
+    }
+
+    // Priority 3: Root directory (another dev fallback)
+    let root_path = PathBuf::from("..").join("signatures.json");
+    if root_path.exists() {
+        if let Ok(rules) = load_signatures_from_path(&root_path) {
+            let abs_path = root_path.canonicalize().unwrap_or(root_path);
+            eprintln!("[main] Loaded {} rules from Root: {:?}", rules.len(), abs_path);
             return (rules, abs_path);
         }
     }

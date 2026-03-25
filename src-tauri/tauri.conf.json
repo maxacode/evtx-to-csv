@@ -3,7 +3,7 @@
   "build": {
     "beforeDevCommand": "npm run dev",
     "beforeBuildCommand": "npm run build",
-    "devPath": "http://localhost:1420",
+    "devPath": "http://localhost:1421",
     "distDir": "../dist"
   },
   "package": {
@@ -35,7 +35,7 @@
       "targets": "all",
       "identifier": "com.evtx.tocsv",
       "resources": [
-        "../signatures.json"
+        "signatures.json"
       ],
       "icon": [
         "icons/32x32.png",
