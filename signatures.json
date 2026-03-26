@@ -291,6 +291,38 @@
       "regex": "(?i)(?:\\\\(?:temp|tmp|appdata\\\\(?:local|roaming)|downloads)\\\\[^\\s]+\\.(?:exe|dll|bat|ps1|vbs|js))\\b"
     },
     {
+      "name": "lolbin_cmd_chaining",
+      "risk": "Medium",
+      "tactic": "Execution",
+      "mitre_id": "T1059.003",
+      "description": "cmd.exe /c or /r used for command chaining or proxy execution. Frequently used to launch secondary payloads or scripts via a standard shell process.",
+      "regex": "(?i)\\bcmd(?:\\.exe)?\\b.*(?:/c|/r)\\b"
+    },
+    {
+      "name": "lolbin_dotnet_proxies",
+      "risk": "High",
+      "tactic": "Defense Evasion",
+      "mitre_id": "T1218",
+      "description": "RegAsm or RegSvcs used to proxy execution of arbitrary .NET code. Bypasses application whitelisting by running within a trusted Microsoft-signed binary.",
+      "regex": "(?i)\\b(?:regasm|regsvcs)(?:\\.exe)?\\b"
+    },
+    {
+      "name": "lolbin_odbcconf",
+      "risk": "High",
+      "tactic": "Defense Evasion",
+      "mitre_id": "T1218.008",
+      "description": "odbcconf.exe used to execute a DLL or script. A less common LOLBin that can bypass certain EDR monitoring rules that focus only on common binaries.",
+      "regex": "(?i)\\bodbcconf(?:\\.exe)?\\b"
+    },
+    {
+      "name": "lolbin_xwizard",
+      "risk": "Medium",
+      "tactic": "Defense Evasion",
+      "mitre_id": "T1218",
+      "description": "xwizard.exe used for arbitrary DLL loading. Can be used to bypass security controls by proxying execution through a legitimate Windows wizard utility.",
+      "regex": "(?i)\\bxwizard(?:\\.exe)?\\b"
+    },
+    {
       "name": "heuristic_double_extension",
       "risk": "High",
       "tactic": "Defense Evasion",
