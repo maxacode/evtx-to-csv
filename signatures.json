@@ -7,7 +7,7 @@
       "risk": "Critical",
       "tactic": "Defense Evasion",
       "mitre_id": "T1027",
-      "description": "PowerShell launched with -EncodedCommand/-enc: Base64-encodes the payload to hide the actual command from casual inspection and bypass script-level logging. Standard in fileless malware, phishing lures, and post-exploitation frameworks.",
+      "description": "PowerShell launched with -EncodedCommand/-enc: Base64-encodes the payload to hide the actual command from casual inspection and bypass script-level logging.",
       "regex": "(?i)\\b(?:powershell|pwsh)(?:\\.exe)?\\b.*(?:-enc\\b|-encodedcommand\\b)"
     },
     {
@@ -15,7 +15,7 @@
       "risk": "High",
       "tactic": "Execution",
       "mitre_id": "T1059.001",
-      "description": "Invoke-Expression (IEX) executes an arbitrary string as code at runtime. Commonly used to run remotely-fetched scripts without writing them to disk — a hallmark of fileless malware.",
+      "description": "Invoke-Expression (IEX) executes an arbitrary string as code at runtime. Hallmark of fileless malware.",
       "regex": "(?i)\\b(?:iex|invoke-expression)\\s*[\\(\\$]"
     },
     {
@@ -23,7 +23,7 @@
       "risk": "High",
       "tactic": "Command & Control",
       "mitre_id": "T1105",
-      "description": "Remote script download via WebClient/DownloadString or Invoke-WebRequest. Pulls attacker-controlled code directly into memory, bypassing traditional AV scanning.",
+      "description": "Remote script download via WebClient/DownloadString or Invoke-WebRequest. Pulls attacker code directly into memory.",
       "regex": "(?i)\\b(?:downloadstring|downloadfile|net\\.webclient|invoke-webrequest|iwr|curl|wget)\\b"
     },
     {
@@ -31,7 +31,7 @@
       "risk": "Medium",
       "tactic": "Command & Control",
       "mitre_id": "T1197",
-      "description": "BITS abused for file download/upload. BITS transfers survive reboots, run as a background service, and blend with legitimate Windows update traffic.",
+      "description": "BITS abused for file download/upload. BITS transfers survive reboots and run as a background service.",
       "regex": "(?i)\\b(?:start-bitstransfer|bitsadmin\\s+/transfer)\\b"
     },
     {
@@ -39,7 +39,7 @@
       "risk": "Medium",
       "tactic": "Defense Evasion",
       "mitre_id": "T1059.001",
-      "description": "PowerShell execution policy bypass or hidden-window flags (-nop, -ep bypass, -WindowStyle Hidden). Used to suppress policy restrictions and avoid visible console windows.",
+      "description": "PowerShell execution policy bypass or hidden-window flags. Used to suppress restrictions and avoid visible console windows.",
       "regex": "(?i)\\b(?:executionpolicy\\s+bypass|-ep\\s+bypass|-nop\\b|-noninteractive\\b|-windowstyle\\s+hidden|-w\\s+hidden)\\b"
     },
     {
@@ -47,7 +47,7 @@
       "risk": "Critical",
       "tactic": "Defense Evasion",
       "mitre_id": "T1620",
-      "description": "Reflective assembly loading injects a .NET DLL directly into memory without touching disk. Used to load offensive tools (Mimikatz, Rubeus) while bypassing file-based AV detection.",
+      "description": "Reflective assembly loading injects a .NET DLL directly into memory without touching disk.",
       "regex": "(?i)\\b(?:\\[reflection\\.assembly\\]::load|add-type\\s+-assembly|\\[system\\.reflection\\.assembly\\]::load)\\b"
     },
     {
@@ -63,7 +63,7 @@
       "risk": "High",
       "tactic": "Command & Control",
       "mitre_id": "T1071",
-      "description": "Direct use of .NET network socket classes in a script. Indicates a custom C2 channel or data exfiltration routine built without using standard web cmdlets.",
+      "description": "Direct use of .NET network socket classes. Indicates a custom C2 channel or data exfiltration routine.",
       "regex": "(?i)\\b(?:net\\.sockets|tcpclient|udpclient|system\\.net\\.sockets|net\\.socket)\\b"
     },
     {
@@ -71,15 +71,39 @@
       "risk": "Critical",
       "tactic": "Defense Evasion",
       "mitre_id": "T1562.001",
-      "description": "AMSI bypass attempt detected. Attackers patch amsi.dll in memory or manipulate the AMSI context to prevent real-time scanning of PowerShell/VBScript/JScript payloads.",
+      "description": "AMSI bypass attempt detected. Attackers patch amsi.dll in memory to prevent real-time scanning.",
       "regex": "(?i)\\b(?:amsiutils|amsi\\.dll|disableamsi|amsicontext|amsiinit|amsiscancontent|amsibypass)\\b"
+    },
+    {
+      "name": "ps_decompression",
+      "risk": "High",
+      "tactic": "Defense Evasion",
+      "mitre_id": "T1027.002",
+      "description": "PowerShell using Gzip/Deflate decompression. Often used to hide large scripts or second-stage payloads.",
+      "regex": "(?i)\\b(?:IO\\.Compression\\.(?:GzipStream|DeflateStream)|\\[System\\.IO\\.Compression\\.CompressionMode\\]::Decompress)\\b"
+    },
+    {
+      "name": "ps_amsi_bypass_reflection",
+      "risk": "Critical",
+      "tactic": "Defense Evasion",
+      "mitre_id": "T1562.001",
+      "description": "Advanced AMSI bypass using reflection to access AmsiUtils. Targets the internal .NET implementation of AMSI.",
+      "regex": "(?i)\\b(?:\\[Ref\\]\\.Assembly\\.GetType\\('System\\.Management\\.Automation\\.AmsiUtils'\\))\\b"
+    },
+    {
+      "name": "ps_marshal_memory_manipulation",
+      "risk": "Critical",
+      "tactic": "Execution",
+      "mitre_id": "T1059.001",
+      "description": "PowerShell using System.Runtime.InteropServices.Marshal for direct memory access. Indicates shellcode injection or memory exploitation.",
+      "regex": "(?i)\\[system\\.runtime\\.interopservices\\.marshal\\]::(?:copy|read|write|allochglobal|ptrto|structuretoptr)"
     },
     {
       "name": "lolbin_certutil_download",
       "risk": "High",
       "tactic": "Command & Control",
       "mitre_id": "T1105",
-      "description": "certutil.exe used to download a remote file — a well-known LOLBin abuse technique. Certutil is a trusted Windows binary, so downloads bypass many web-filtering tools.",
+      "description": "certutil.exe used to download a remote file — a well-known LOLBin abuse technique.",
       "regex": "(?i)\\bcertutil(?:\\.exe)?\\b.*(?:-urlcache|-split|-f\\s+http)"
     },
     {
@@ -87,7 +111,7 @@
       "risk": "High",
       "tactic": "Execution",
       "mitre_id": "T1218.005",
-      "description": "mshta.exe executing an HTA file or remote URL. MSHTA runs HTML Applications with full scripting privileges, commonly abused to execute attacker payloads.",
+      "description": "mshta.exe executing an HTA file or remote URL. MSHTA runs HTML Applications with full scripting privileges.",
       "regex": "(?i)\\bmshta(?:\\.exe)?\\b.*(?:http|vbscript:|javascript:|\\.hta\\b)"
     },
     {
@@ -95,7 +119,7 @@
       "risk": "Critical",
       "tactic": "Defense Evasion",
       "mitre_id": "T1218.010",
-      "description": "Squiblydoo attack: regsvr32.exe used with /i:http and scrobj.dll to execute a remote COM scriptlet. Bypasses AppLocker and leaves minimal traces on disk.",
+      "description": "Squiblydoo attack: regsvr32.exe used to execute a remote COM scriptlet. Bypasses AppLocker.",
       "regex": "(?i)\\bregsvr32(?:\\.exe)?\\b.*(?:/i\\s*:\\s*http|scrobj\\.dll)"
     },
     {
@@ -103,7 +127,7 @@
       "risk": "Critical",
       "tactic": "Credential Access",
       "mitre_id": "T1003.001",
-      "description": "rundll32.exe invoking comsvcs.dll MiniDump — used to dump LSASS process memory to extract credential hashes without requiring Mimikatz on disk.",
+      "description": "rundll32.exe invoking comsvcs.dll MiniDump — used to dump LSASS process memory.",
       "regex": "(?i)\\brundll32(?:\\.exe)?\\b.*(?:comsvcs\\.dll|minidump)"
     },
     {
@@ -111,7 +135,7 @@
       "risk": "Medium",
       "tactic": "Execution",
       "mitre_id": "T1047",
-      "description": "WMIC used for process creation or remote execution — a classic LOLBin for execution without spawning cmd.exe directly.",
+      "description": "WMIC used for process creation or remote execution without spawning cmd.exe directly.",
       "regex": "(?i)\\bwmic(?:\\.exe)?\\b.*(?:process\\s+call\\s+create|/node\\s*:)"
     },
     {
@@ -119,7 +143,7 @@
       "risk": "High",
       "tactic": "Execution",
       "mitre_id": "T1059.005",
-      "description": "CScript/WScript executing a script file. Malware frequently uses these to run .vbs/.js droppers that evade macro-based detection.",
+      "description": "CScript/WScript executing a script file. Frequently used to run .vbs/.js droppers.",
       "regex": "(?i)\\b(?:cscript|wscript)(?:\\.exe)?\\b.*\\.(vbs|js|jse|vbe|wsf)\\b"
     },
     {
@@ -127,7 +151,7 @@
       "risk": "High",
       "tactic": "Defense Evasion",
       "mitre_id": "T1218.004",
-      "description": "InstallUtil.exe abused to execute arbitrary .NET code. Bypasses AppLocker and application whitelisting by running under a trusted Microsoft binary.",
+      "description": "InstallUtil.exe abused to execute arbitrary .NET code. Bypasses application whitelisting.",
       "regex": "(?i)\\binstallutil(?:\\.exe)?\\b"
     },
     {
@@ -135,7 +159,7 @@
       "risk": "High",
       "tactic": "Defense Evasion",
       "mitre_id": "T1218.003",
-      "description": "CMSTP.exe exploited to execute arbitrary DLLs or COM scriptlets. Bypasses UAC and AppLocker on unpatched systems.",
+      "description": "CMSTP.exe exploited to execute arbitrary DLLs or COM scriptlets. Bypasses UAC.",
       "regex": "(?i)\\bcmstp(?:\\.exe)?\\b"
     },
     {
@@ -143,7 +167,7 @@
       "risk": "Medium",
       "tactic": "Defense Evasion",
       "mitre_id": "T1218.007",
-      "description": "msiexec.exe used to install a package from a remote URL — allows execution of arbitrary code without a visible installer UI.",
+      "description": "msiexec.exe used to install a package from a remote URL. Allows execution of arbitrary code.",
       "regex": "(?i)\\bmsiexec(?:\\.exe)?\\b.*(?:/i\\s+http|/package\\s+http|quiet)"
     },
     {
@@ -151,15 +175,31 @@
       "risk": "High",
       "tactic": "Lateral Movement",
       "mitre_id": "T1569.002",
-      "description": "PsExec used for remote command execution. Frequently abused by ransomware operators for lateral movement across Windows environments.",
+      "description": "PsExec used for remote command execution. Frequently used by ransomware operators.",
       "regex": "(?i)\\bpsexec(?:\\.exe|c\\.exe)?\\b"
+    },
+    {
+      "name": "lolbin_pcalua_execution",
+      "risk": "Medium",
+      "tactic": "Defense Evasion",
+      "mitre_id": "T1218",
+      "description": "Program Compatibility Assistant (pcalua.exe) used to proxy execution.",
+      "regex": "(?i)\\bpcalua(?:\\.exe)?\\b.*-a\\b"
+    },
+    {
+      "name": "lolbin_file_extraction",
+      "risk": "Medium",
+      "tactic": "Defense Evasion",
+      "mitre_id": "T1218",
+      "description": "Native Windows tools (makecab, expand, extrac32) used for file extraction or cabinet creation.",
+      "regex": "(?i)\\b(?:makecab|expand|extrac32)(?:\\.exe)?\\b"
     },
     {
       "name": "defender_tamper",
       "risk": "Critical",
       "tactic": "Defense Evasion",
       "mitre_id": "T1562.001",
-      "description": "Windows Defender configuration modified via Set-MpPreference/Add-MpPreference. Adding exclusion paths or disabling real-time monitoring is a primary pre-ransomware step.",
+      "description": "Windows Defender configuration modified. Adding exclusion paths or disabling real-time monitoring.",
       "regex": "(?i)\\b(?:set-mppreference|add-mppreference)\\b.*(?:disablebehaviormonitoring|disablerealtimemonitoring|exclusionpath|disableioavprotection|disableantispyware)"
     },
     {
@@ -167,7 +207,7 @@
       "risk": "Critical",
       "tactic": "Impact",
       "mitre_id": "T1490",
-      "description": "Shadow copy/backup deletion detected. Executed immediately before ransomware encryption to prevent victim recovery without paying.",
+      "description": "Shadow copy/backup deletion detected. Executed immediately before ransomware encryption.",
       "regex": "(?i)\\b(?:vssadmin\\s+delete\\s+shadows|wbadmin\\s+delete\\s+catalog|wmic\\s+shadowcopy\\s+delete)\\b"
     },
     {
@@ -175,7 +215,7 @@
       "risk": "High",
       "tactic": "Defense Evasion",
       "mitre_id": "T1070.001",
-      "description": "Windows event log cleared via wevtutil or PowerShell Clear-EventLog. Attackers clear logs to destroy forensic evidence after completing their objectives.",
+      "description": "Windows event log cleared via wevtutil or PowerShell. Destroying forensic evidence.",
       "regex": "(?i)\\b(?:wevtutil\\s+cl\\b|wevtutil\\s+clear-log|clear-eventlog|remove-eventlog)\\b"
     },
     {
@@ -183,7 +223,7 @@
       "risk": "High",
       "tactic": "Impact",
       "mitre_id": "T1490",
-      "description": "bcdedit used to disable Windows recovery. Prevents the OS from booting into recovery mode after ransomware encryption.",
+      "description": "bcdedit used to disable Windows recovery. Prevents booting into recovery mode.",
       "regex": "(?i)\\bbcdedit(?:\\.exe)?\\b.*(?:recoveryenabled\\s+no|safeboot)"
     },
     {
@@ -191,7 +231,7 @@
       "risk": "Critical",
       "tactic": "Credential Access",
       "mitre_id": "T1003",
-      "description": "Known credential dumping tool or technique detected: Mimikatz, WCE, fgdump, pwdump, gsecdump, or comsvcs MiniDump of LSASS.",
+      "description": "Known credential dumping tool detected: Mimikatz, WCE, fgdump, pwdump, gsecdump, or LSASS dump.",
       "regex": "(?i)\\b(?:mimikatz|sekurlsa|procdump\\b.*lsass|ntdsutil\\b|vaultcmd\\b|wce\\.exe|fgdump|pwdump|gsecdump|invoke-mimikatz|lsassy)\\b"
     },
     {
@@ -199,7 +239,7 @@
       "risk": "Critical",
       "tactic": "Credential Access",
       "mitre_id": "T1003.001",
-      "description": "Direct LSASS process dump detected. Dumping lsass.exe provides all logged-on user credential hashes and Kerberos tickets.",
+      "description": "Direct LSASS process dump detected. Provides all logged-on user credential hashes.",
       "regex": "(?i)\\b(?:procdump(?:\\.exe)?)\\b.*\\blsass\\b|\\blsass\\b.*minidump"
     },
     {
@@ -207,15 +247,23 @@
       "risk": "High",
       "tactic": "Command & Control",
       "mitre_id": "T1219",
-      "description": "Unauthorized remote access tool detected (AnyDesk misuse, ngrok, netcat, socat, chisel, Ligolo, Meterpreter, or Cobalt Strike artefacts).",
+      "description": "Unauthorized remote access tool detected (AnyDesk, ngrok, netcat, chisel, Cobalt Strike).",
       "regex": "(?i)\\b(?:anydesk|ngrok|ncat\\.exe|netcat\\b|socat\\b|chisel\\b|ligolo\\b|meterpreter|cobalt.?strike|c2\\.exe|beacon\\.exe)\\b"
+    },
+    {
+      "name": "wmi_persistence_eventing",
+      "risk": "High",
+      "tactic": "Persistence",
+      "mitre_id": "T1546.003",
+      "description": "WMI event subscription created. Used to trigger malicious code when system events occur.",
+      "regex": "(?i)\\b(?:__EventFilter|__EventConsumer|FilterToConsumerBinding)\\b"
     },
     {
       "name": "persistence_run_key",
       "risk": "High",
       "tactic": "Persistence",
       "mitre_id": "T1547.001",
-      "description": "Registry Run/RunOnce key modification via reg add. Adding entries causes the specified program to execute at every user login.",
+      "description": "Registry Run/RunOnce key modification. Program executes at every user login.",
       "regex": "(?i)\\breg\\s+add\\b.*\\\\(?:run|runonce)\\b"
     },
     {
@@ -223,7 +271,7 @@
       "risk": "Medium",
       "tactic": "Persistence",
       "mitre_id": "T1053.005",
-      "description": "Scheduled task created via schtasks /create. Malware uses scheduled tasks to survive reboots and re-execute at intervals.",
+      "description": "Scheduled task created via schtasks /create. Malware survives reboots and re-executes.",
       "regex": "(?i)\\bschtasks(?:\\.exe)?\\b.*(?:/create\\b|/sc\\b)"
     },
     {
@@ -231,15 +279,87 @@
       "risk": "Medium",
       "tactic": "Persistence",
       "mitre_id": "T1543.003",
-      "description": "Windows service created or reconfigured via sc create/config or New-Service. Attackers install malicious services for persistent SYSTEM-level execution.",
+      "description": "Windows service created or reconfigured. Malicious services for persistent SYSTEM-level execution.",
       "regex": "(?i)\\b(?:sc\\s+create\\b|sc\\s+config\\b|new-service\\b)\\b"
+    },
+    {
+      "name": "persistence_winlogon_shell_userinit",
+      "risk": "High",
+      "tactic": "Persistence",
+      "mitre_id": "T1547.004",
+      "description": "Winlogon Shell or Userinit registry key modified. Provides reliable persistence at login.",
+      "regex": "(?i)\\breg\\s+add\\b.*\\\\Winlogon\\b.*(?:Shell|Userinit)\\b"
+    },
+    {
+      "name": "persistence_ifeo_debugger",
+      "risk": "Critical",
+      "tactic": "Persistence",
+      "mitre_id": "T1546.012",
+      "description": "Image File Execution Options (IFEO) debugger hijack. Runs malware whenever a targeted app launches.",
+      "regex": "(?i)\\breg\\s+add\\b.*\\\\Image\\s+File\\s+Execution\\s+Options\\b.*\\\\Debugger\\b"
+    },
+    {
+      "name": "persistence_appinit_dlls",
+      "risk": "High",
+      "tactic": "Persistence",
+      "mitre_id": "T1546.010",
+      "description": "Persistence via AppInit_DLLs registry key. Loads DLL into every process linking with User32.dll.",
+      "regex": "(?i)\\breg\\s+add\\b.*\\\\AppInit_DLLs\\b"
+    },
+    {
+      "name": "persistence_startup_folder",
+      "risk": "Medium",
+      "tactic": "Persistence",
+      "mitre_id": "T1547.001",
+      "description": "File copied to the Windows Startup folder to run automatically at login.",
+      "regex": "(?i)\\bcopy\\b.*\\bMicrosoft\\\\Windows\\\\Start\\s+Menu\\\\Programs\\\\Startup\\b"
+    },
+    {
+      "name": "user_account_creation",
+      "risk": "Medium",
+      "tactic": "Persistence",
+      "mitre_id": "T1136.001",
+      "description": "New local user account created via command line. Fallback access point.",
+      "regex": "(?i)\\bnet\\s+user\\s+.*\\s+/add\\b"
+    },
+    {
+      "name": "user_added_to_admin_group",
+      "risk": "High",
+      "tactic": "Privilege Escalation",
+      "mitre_id": "T1078.003",
+      "description": "User added to the local Administrators group. Grants full control over the system.",
+      "regex": "(?i)\\bnet\\s+localgroup\\s+administrators\\s+.*\\s+/add\\b"
+    },
+    {
+      "name": "firewall_disabled",
+      "risk": "High",
+      "tactic": "Defense Evasion",
+      "mitre_id": "T1562.004",
+      "description": "Windows Firewall disabled via netsh. Allows unrestricted network traffic.",
+      "regex": "(?i)\\bnetsh\\s+advfirewall\\s+set\\s+(?:allprofiles|currentprofile|domainprofile|publicprofile|privateprofile)\\s+state\\s+off\\b"
+    },
+    {
+      "name": "rdp_enabled_registry",
+      "risk": "High",
+      "tactic": "Lateral Movement",
+      "mitre_id": "T1021.001",
+      "description": "Remote Desktop (RDP) enabled via registry. Facilitates remote interaction.",
+      "regex": "(?i)\\breg\\s+add\\b.*fDenyTSConnections\\b.*/t\\s+REG_DWORD\\b.*/d\\s+0\\b"
+    },
+    {
+      "name": "service_stop_security",
+      "risk": "High",
+      "tactic": "Defense Evasion",
+      "mitre_id": "T1562.001",
+      "description": "Security-related service stopped via net stop. Targets Defender, SENSE, or Firewall.",
+      "regex": "(?i)\\bnet\\s+stop\\s+(?:windefend|sense|mpssvc)\\b"
     },
     {
       "name": "recon_whoami",
       "risk": "Low",
       "tactic": "Discovery",
       "mitre_id": "T1033",
-      "description": "whoami executed — standard first recon step after initial access to confirm the compromised user account and its privilege level.",
+      "description": "whoami executed — confirms the compromised user account and its privilege level.",
       "regex": "(?i)\\bwhoami(?:\\.exe)?\\b"
     },
     {
@@ -247,7 +367,7 @@
       "risk": "Medium",
       "tactic": "Discovery",
       "mitre_id": "T1087.002",
-      "description": "net user /domain or net group — domain user/group enumeration. Attackers run these to identify admin accounts before moving laterally.",
+      "description": "net user /domain or net group — domain user/group enumeration.",
       "regex": "(?i)\\bnet\\s+(?:user\\s+/domain|group\\s+/domain|localgroup\\b|accounts\\b)"
     },
     {
@@ -255,7 +375,7 @@
       "risk": "Low",
       "tactic": "Discovery",
       "mitre_id": "T1082",
-      "description": "systeminfo executed — gathers OS version, patch level, hotfixes, and domain info. Used to identify unpatched CVEs.",
+      "description": "systeminfo executed — gathers OS version, patch level, and hotfixes.",
       "regex": "(?i)\\bsysteminfo(?:\\.exe)?\\b"
     },
     {
@@ -263,7 +383,7 @@
       "risk": "Low",
       "tactic": "Discovery",
       "mitre_id": "T1016",
-      "description": "Network configuration discovery (arp, route, netstat, ipconfig). Reveals network topology and active connections for lateral movement planning.",
+      "description": "Network configuration discovery (arp, route, netstat, ipconfig).",
       "regex": "(?i)\\b(?:arp\\s+-a|route\\s+print|netstat\\b|ipconfig\\s*/all)\\b"
     },
     {
@@ -271,15 +391,31 @@
       "risk": "Low",
       "tactic": "Discovery",
       "mitre_id": "T1057",
-      "description": "tasklist or Get-Process used to enumerate running processes. Attackers use this to identify security tools and valuable targets like lsass.exe.",
+      "description": "tasklist or Get-Process used to enumerate running processes.",
       "regex": "(?i)\\b(?:tasklist(?:\\.exe)?|get-process\\b|get-service\\b)\\b"
+    },
+    {
+      "name": "recon_password_search",
+      "risk": "Medium",
+      "tactic": "Credential Access",
+      "mitre_id": "T1552.001",
+      "description": "Searching for passwords in files via findstr. Look for plaintext credentials.",
+      "regex": "(?i)\\bfindstr\\b.*/s.*/i\\b.*(?:password|pwd|admin|login|cred)\\b"
+    },
+    {
+      "name": "data_staging_archiving",
+      "risk": "Medium",
+      "tactic": "Collection",
+      "mitre_id": "T1560.001",
+      "description": "Data staging using archive tools (7z, rar, zip). Indicates preparation for exfiltration.",
+      "regex": "(?i)\\b(?:7z|rar|zip|tar)\\b.*(?:\\s+a\\s+|\\s+m\\s+).*\\.(?:7z|rar|zip|tar)\\b"
     },
     {
       "name": "heuristic_base64_in_command",
       "risk": "Medium",
       "tactic": "Defense Evasion",
       "mitre_id": "T1027",
-      "description": "Long Base64 string detected in a command-line or script field. Strongly suggests obfuscated payload delivery.",
+      "description": "Long Base64 string detected in a command field. Suggests obfuscated payload delivery.",
       "regex": "(?:[A-Za-z0-9+/]{40,}={0,2})"
     },
     {
@@ -287,15 +423,23 @@
       "risk": "Medium",
       "tactic": "Defense Evasion",
       "mitre_id": "T1036",
-      "description": "Executable running from a Temp, AppData, or Downloads path — common staging locations for malware that avoids writing to monitored system directories.",
+      "description": "Executable running from Temp, AppData, or Downloads path.",
       "regex": "(?i)(?:\\\\(?:temp|tmp|appdata\\\\(?:local|roaming)|downloads)\\\\[^\\s]+\\.(?:exe|dll|bat|ps1|vbs|js))\\b"
+    },
+    {
+      "name": "heuristic_double_extension",
+      "risk": "High",
+      "tactic": "Defense Evasion",
+      "mitre_id": "T1036.007",
+      "description": "File with double extension detected (e.g. invoice.pdf.exe). Masquerading technique.",
+      "regex": "(?i)\\.\\w{2,4}\\.(exe|dll|bat|cmd|ps1|vbs|js|hta)\\b"
     },
     {
       "name": "lolbin_cmd_chaining",
       "risk": "Medium",
       "tactic": "Execution",
       "mitre_id": "T1059.003",
-      "description": "cmd.exe /c or /r used for command chaining or proxy execution. Frequently used to launch secondary payloads or scripts via a standard shell process.",
+      "description": "cmd.exe /c or /r used for command chaining or proxy execution.",
       "regex": "(?i)\\bcmd(?:\\.exe)?\\b.*(?:/c|/r)\\b"
     },
     {
@@ -303,7 +447,7 @@
       "risk": "High",
       "tactic": "Defense Evasion",
       "mitre_id": "T1218",
-      "description": "RegAsm or RegSvcs used to proxy execution of arbitrary .NET code. Bypasses application whitelisting by running within a trusted Microsoft-signed binary.",
+      "description": "RegAsm or RegSvcs used to proxy execution of arbitrary .NET code.",
       "regex": "(?i)\\b(?:regasm|regsvcs)(?:\\.exe)?\\b"
     },
     {
@@ -311,7 +455,7 @@
       "risk": "High",
       "tactic": "Defense Evasion",
       "mitre_id": "T1218.008",
-      "description": "odbcconf.exe used to execute a DLL or script. A less common LOLBin that can bypass certain EDR monitoring rules that focus only on common binaries.",
+      "description": "odbcconf.exe used to execute a DLL or script. Less common LOLBin.",
       "regex": "(?i)\\bodbcconf(?:\\.exe)?\\b"
     },
     {
@@ -319,16 +463,8 @@
       "risk": "Medium",
       "tactic": "Defense Evasion",
       "mitre_id": "T1218",
-      "description": "xwizard.exe used for arbitrary DLL loading. Can be used to bypass security controls by proxying execution through a legitimate Windows wizard utility.",
+      "description": "xwizard.exe used for arbitrary DLL loading to bypass security controls.",
       "regex": "(?i)\\bxwizard(?:\\.exe)?\\b"
-    },
-    {
-      "name": "heuristic_double_extension",
-      "risk": "High",
-      "tactic": "Defense Evasion",
-      "mitre_id": "T1036.007",
-      "description": "File with double extension detected (e.g. invoice.pdf.exe). A classic masquerading technique to trick users into treating an executable as a benign document.",
-      "regex": "(?i)\\.\\w{2,4}\\.(exe|dll|bat|cmd|ps1|vbs|js|hta)\\b"
     }
   ]
 }
