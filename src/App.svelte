@@ -42,6 +42,7 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
   import FileCard from './lib/components/FileCard.svelte';
+  import FilterPanel from './lib/components/FilterPanel.svelte';
   import { openEvtxFiles, reloadSignatures, getSignaturesInfo } from './lib/tauri-api';
   import { defaultFilters } from './lib/types';
   import type { FileEntry } from './lib/types';
@@ -52,6 +53,16 @@
 
   /** All loaded .evtx files, each represented as a FileEntry */
   let files: FileEntry[] = [];
+
+  /**
+   * Global filter configuration that can be applied to all files.
+   * Useful when an analyst wants to apply the same time range or
+   * hostname filter across multiple loaded logs at once.
+   */
+  let globalFilters = defaultFilters();
+
+  /** Whether the global filter panel in the toolbar is expanded */
+  let showGlobalFilters = false;
 
   /**
    * Global enrichment toggle.
@@ -70,11 +81,41 @@
   let refreshToast: string | null = null;
   let refreshToastTimer: ReturnType<typeof setTimeout> | null = null;
 
-  /**
-   * Whether a drag-over is currently in progress on the window.
+  /** Whether a drag-over is currently in progress on the window.
    * Used to show a visual overlay/indication that drop is supported.
    */
   let isDragging: boolean = false;
+
+  /**
+   * Apply the global filter configuration to all currently loaded files.
+   * This resets each file's status to 'idle' so the analyst knows they
+   * need to be re-exported with the new settings.
+   */
+  function handleSyncGlobalFilters(): void {
+    if (files.length === 0) return;
+
+    files = files.map((f) => ({
+      ...f,
+      filters: { ...globalFilters },
+      // Reset status if it was previously done/error since filters changed
+      status: f.status === 'done' || f.status === 'error' ? 'idle' : f.status,
+      errorMessage: null,
+    }));
+
+    // Show a brief success toast
+    refreshToast = `✓ Applied filters to ${files.length} file${files.length !== 1 ? 's' : ''}`;
+    if (refreshToastTimer) clearTimeout(refreshToastTimer);
+    refreshToastTimer = setTimeout(() => {
+      refreshToast = null;
+    }, 3000);
+  }
+
+  /**
+   * Reset the global filter panel to default (no filters).
+   */
+  function handleClearGlobalFilters(): void {
+    globalFilters = defaultFilters();
+  }
 
   // -------------------------------------------------------------------------
   // Lifecycle: onMount
@@ -350,6 +391,32 @@
           Run report.md
         </span>
       </label>
+
+      <!-- Divider -->
+      <div class="toolbar-divider" aria-hidden="true"></div>
+
+      <!-- Global Filters toggle -->
+      <button
+        class="btn btn-secondary"
+        class:active={showGlobalFilters}
+        on:click={() => (showGlobalFilters = !showGlobalFilters)}
+        title="Show global filter panel to apply same filters to all files"
+      >
+        <svg
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+        </svg>
+        Global Filters
+      </button>
     </div>
 
     <!-- Signatures status + Refresh button -->
@@ -402,6 +469,37 @@
       {/if}
     </div>
   </div>
+
+  <!-- -----------------------------------------------------------------------
+       Global Filter Panel (shown when showGlobalFilters is true)
+       ----------------------------------------------------------------------- -->
+  {#if showGlobalFilters}
+    <div class="global-filter-outer">
+      <div class="global-filter-inner">
+        <div class="global-filter-header-row">
+          <div class="global-filter-title">
+            <h3>Global Filter Panel</h3>
+            <p>Define filters here and click "Apply to All" to sync them across every file.</p>
+          </div>
+          <div class="global-filter-actions">
+            <button class="btn btn-secondary" on:click={handleClearGlobalFilters}>
+              Clear
+            </button>
+            <button
+              class="btn btn-primary"
+              on:click={handleSyncGlobalFilters}
+              disabled={files.length === 0}
+            >
+              Apply to All Files ({files.length})
+            </button>
+          </div>
+        </div>
+        <div class="global-filter-panel-wrapper">
+          <FilterPanel bind:filters={globalFilters} />
+        </div>
+      </div>
+    </div>
+  {/if}
 
   <!-- -----------------------------------------------------------------------
        Main content area
@@ -621,6 +719,60 @@
   }
 
   /* -------------------------------------------------------------------------
+     Global Filter Panel
+     ------------------------------------------------------------------------- */
+  .global-filter-outer {
+    background: var(--color-bg-card);
+    border-bottom: 1px solid var(--color-border);
+    padding: 0 24px;
+    flex-shrink: 0;
+  }
+
+  .global-filter-inner {
+    max-width: 1200px;
+    margin: 0 auto;
+    width: 100%;
+    padding: 20px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .global-filter-header-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+  }
+
+  .global-filter-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+  }
+
+  .global-filter-title h3 {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--color-text);
+    margin: 0 0 4px 0;
+  }
+
+  .global-filter-title p {
+    font-size: 13px;
+    color: var(--color-text-muted);
+    margin: 0;
+  }
+
+  .global-filter-panel-wrapper {
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    padding: 20px;
+  }
+
+  /* -------------------------------------------------------------------------
      Buttons
      ------------------------------------------------------------------------- */
   .btn {
@@ -657,6 +809,12 @@
     color: var(--color-text);
     border-color: #3d4260;
     background: #272b3f;
+  }
+
+  .btn-secondary.active {
+    background: var(--color-accent);
+    color: #fff;
+    border-color: var(--color-accent);
   }
 
   /* Larger variant for the empty state CTA */
