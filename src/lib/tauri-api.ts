@@ -30,6 +30,17 @@ import { open, save } from '@tauri-apps/api/dialog';
 import { open as openShell } from '@tauri-apps/api/shell';
 import type { FilterConfig, EventRecord } from './types';
 
+function assertTauriAvailable(feature: string) {
+  // In a normal browser tab (e.g. opening Vite's dev URL directly), Tauri APIs
+  // are not available. Failing loudly here avoids "button does nothing" UX.
+  const w = window as unknown as { __TAURI__?: unknown };
+  if (!w.__TAURI__) {
+    throw new Error(
+      `${feature} is only available inside the Tauri desktop app window (not a regular browser tab).`
+    );
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Shell / Path helpers
 // ---------------------------------------------------------------------------
@@ -65,6 +76,53 @@ export async function openFolder(path: string): Promise<void> {
 // ---------------------------------------------------------------------------
 
 /**
+ * Opens a native directory picker dialog that allows selecting a single folder.
+ *
+ * Returns the absolute path to the selected directory, or null if cancelled.
+ *
+ * @returns Promise resolving to the selected folder path or null
+ */
+export async function openFolderDialog(): Promise<string | null> {
+  assertTauriAvailable('Folder picker');
+  try {
+    const result = await open({
+      directory: true,
+      multiple: false,
+    });
+
+    if (result === null) {
+      return null;
+    }
+
+    return Array.isArray(result) ? result[0] : result;
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    throw new Error(`Failed to open folder picker: ${message}`);
+  }
+}
+
+/**
+ * Invokes the Rust `list_evtx_in_dir` command to recursively find .evtx files.
+ *
+ * @param path      - Absolute path to the directory to scan
+ * @param recursive - Whether to search subdirectories (default: true)
+ * @returns Promise resolving to an array of absolute file paths
+ */
+export async function listEvtxInDir(path: string, recursive: boolean = true): Promise<string[]> {
+  try {
+    const files = await invoke<string[]>('list_evtx_in_dir', {
+      path,
+      recursive,
+    });
+
+    return files;
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    throw new Error(`Failed to list files in ${path}: ${message}`);
+  }
+}
+
+/**
  * Opens a native file picker dialog that allows selecting one or more .evtx files.
  *
  * Returns an array of absolute file paths. Returns an empty array if the user
@@ -73,6 +131,7 @@ export async function openFolder(path: string): Promise<void> {
  * @returns Promise resolving to an array of selected file paths (may be empty)
  */
 export async function openEvtxFiles(): Promise<string[]> {
+  assertTauriAvailable('File picker');
   try {
     const result = await open({
       // Allow picking multiple files at once to batch-load several logs
@@ -99,9 +158,8 @@ export async function openEvtxFiles(): Promise<string[]> {
     // Single string fallback (shouldn't happen with multiple: true, but be safe)
     return [result];
   } catch (err) {
-    // Dialog errors are usually non-fatal (e.g. permissions) — log and return empty
-    console.error('[tauri-api] openEvtxFiles error:', err);
-    return [];
+    const message = err instanceof Error ? err.message : String(err);
+    throw new Error(`Failed to open file picker: ${message}`);
   }
 }
 
@@ -113,6 +171,7 @@ export async function openEvtxFiles(): Promise<string[]> {
  * @returns Promise resolving to the chosen absolute path, or null if cancelled
  */
 export async function saveFileDialog(defaultName: string): Promise<string | null> {
+  assertTauriAvailable('Save dialog');
   try {
     const result = await save({
       // Append .csv so the file picker shows the correct extension suggestion
@@ -128,8 +187,8 @@ export async function saveFileDialog(defaultName: string): Promise<string | null
     // save() returns null on cancel
     return result ?? null;
   } catch (err) {
-    console.error('[tauri-api] saveFileDialog error:', err);
-    return null;
+    const message = err instanceof Error ? err.message : String(err);
+    throw new Error(`Failed to open save dialog: ${message}`);
   }
 }
 
@@ -140,6 +199,7 @@ export async function saveFileDialog(defaultName: string): Promise<string | null
  * @returns Promise resolving to the chosen absolute path, or null if cancelled
  */
 export async function saveReportDialog(defaultName: string): Promise<string | null> {
+  assertTauriAvailable('Save dialog');
   try {
     const result = await save({
       defaultPath: `${defaultName}.md`,
@@ -153,8 +213,8 @@ export async function saveReportDialog(defaultName: string): Promise<string | nu
 
     return result ?? null;
   } catch (err) {
-    console.error('[tauri-api] saveReportDialog error:', err);
-    return null;
+    const message = err instanceof Error ? err.message : String(err);
+    throw new Error(`Failed to open save dialog: ${message}`);
   }
 }
 

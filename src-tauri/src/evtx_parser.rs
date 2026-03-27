@@ -399,6 +399,18 @@ fn extract_event_data_section(event_data: &Value, map: &mut HashMap<String, Stri
                 map.insert("Data".to_string(), trimmed.to_string());
             }
         }
+
+        // Even when `EventData.Data` exists, some providers also include sibling
+        // keys (e.g. `Binary`). Preserve those too.
+        if let Some(obj) = event_data.as_object() {
+            for (key, val) in obj {
+                if key == "Data" || key == "#attributes" {
+                    continue;
+                }
+                // Flatten scalars/arrays/objects into the map under a stable prefix.
+                flatten_json_to_map(val, map, key);
+            }
+        }
     } else {
         // Case D: EventData has direct key→value pairs (no Data sub-array).
         // Flatten any direct object properties (skip #attributes which is metadata).
@@ -431,40 +443,59 @@ fn extract_event_data_section(event_data: &Value, map: &mut HashMap<String, Stri
 // ---------------------------------------------------------------------------
 fn insert_data_item(map: &mut HashMap<String, String>, item: &Value, idx: usize) {
     // Try to get the field name from #attributes.Name
-    let name = item
+    let name_attr = item
         .pointer("/#attributes/Name")
         .and_then(Value::as_str)
         .filter(|s| !s.is_empty())
-        .map(|s| s.to_string())
-        // Fallback: use positional key so unnamed data is not lost
-        .unwrap_or_else(|| format!("Data_{}", idx));
+        .map(|s| s.to_string());
+
+    let is_named = name_attr.is_some();
+    // Fallback: use positional key so unnamed data is not lost
+    let base_name = name_attr.unwrap_or_else(|| format!("Data_{}", idx));
 
     // Get the field value from #text — may be a string, number, or boolean.
-    let value = match item.get("#text") {
-        Some(Value::String(s)) => {
-            let t = s.trim();
-            if t.is_empty() || t == "-" {
-                return; // Windows "not applicable" sentinel — skip
-            }
-            t.to_string()
-        }
-        Some(Value::Number(n)) => n.to_string(),
-        Some(Value::Bool(b))   => b.to_string(),
-        // If item is itself a plain string (e.g. array of bare strings), use it directly
-        _ => {
-            if let Some(s) = item.as_str() {
-                let t = s.trim();
-                if t.is_empty() || t == "-" { return; }
-                t.to_string()
-            } else if let Some(n) = item.as_u64() {
-                n.to_string()
-            } else {
-                return; // null, object, array — not a usable scalar
-            }
-        }
-    };
+    match item.get("#text") {
+        Some(Value::Array(arr)) => {
+            // Some providers emit a single Data object where `#text` is an array of
+            // unnamed values (equivalent to multiple `<Data>...</Data>` elements).
+            //
+            // Preserve these by generating stable keys for each element.
+            //
+            // If this item is unnamed and contains ONLY `#text`/`#attributes`, treat it
+            // as a collapsed list and continue numbering `Data_0`, `Data_1`, …
+            // Otherwise suffix the base name to avoid collisions.
+            let collapsed_list = !is_named
+                && item
+                    .as_object()
+                    .map(|o| o.keys().all(|k| k == "#text" || k == "#attributes"))
+                    .unwrap_or(false);
 
-    map.insert(name, value);
+            for (i, v) in arr.iter().enumerate() {
+                let key = if collapsed_list {
+                    format!("Data_{}", idx + i)
+                } else if is_named {
+                    if arr.len() == 1 {
+                        base_name.clone()
+                    } else {
+                        format!("{}_{}", base_name, i)
+                    }
+                } else if arr.len() == 1 {
+                    base_name.clone()
+                } else {
+                    format!("{}_{}", base_name, i)
+                };
+                flatten_json_to_map(v, map, &key);
+            }
+        }
+        Some(_) => {
+            // Scalar or nested object in `#text`
+            flatten_json_to_map(item.get("#text").unwrap(), map, &base_name);
+        }
+        None => {
+            // If item is itself a plain scalar (e.g. array of bare strings), use it directly.
+            flatten_json_to_map(item, map, &base_name);
+        }
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -478,6 +509,16 @@ fn insert_data_item(map: &mut HashMap<String, String>, item: &Value, idx: usize)
 // ---------------------------------------------------------------------------
 fn flatten_json_to_map(value: &Value, map: &mut HashMap<String, String>, prefix: &str) {
     match value {
+        Value::Array(arr) => {
+            for (idx, val) in arr.iter().enumerate() {
+                let new_key = if prefix.is_empty() {
+                    format!("Item_{}", idx)
+                } else {
+                    format!("{}_{}", prefix, idx)
+                };
+                flatten_json_to_map(val, map, &new_key);
+            }
+        }
         Value::Object(obj) => {
             for (key, val) in obj {
                 // Skip JSON metadata keys produced by the evtx crate
@@ -496,8 +537,10 @@ fn flatten_json_to_map(value: &Value, map: &mut HashMap<String, String>, prefix:
             // Also check for a "#text" value directly on this object
             // (evtx emits {#attributes:{...}, #text:"value"} for XML elements with both)
             if let Some(text) = obj.get("#text") {
-                let effective_key = if prefix.is_empty() { "Value".to_string() } else { prefix.to_string() };
-                insert_scalar(map, &effective_key, text);
+                let effective_key =
+                    if prefix.is_empty() { "Value".to_string() } else { prefix.to_string() };
+                // `#text` may itself be a scalar OR an array (collapsed repeated elements).
+                flatten_json_to_map(text, map, &effective_key);
             }
         }
         _ => {
@@ -553,4 +596,82 @@ fn find_field_by_name_fragment(
         }
     }
     None
+}
+
+// ---------------------------------------------------------------------------
+// Tests
+// ---------------------------------------------------------------------------
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn no_filters() -> FilterConfig {
+        FilterConfig {
+            date_from: None,
+            date_to: None,
+            relative_days: None,
+            process_id: None,
+            hostname: None,
+            ip_address: None,
+            username: None,
+            keyword: None,
+            keyword_context: None,
+            custom_field_name: None,
+            custom_field_value: None,
+            llm_optimized: None,
+        }
+    }
+
+    #[test]
+    fn insert_data_item_preserves_text_arrays() {
+        let mut map = HashMap::new();
+        let item = serde_json::json!({
+            "#text": ["Coro Endpoint Protection", "SECURITY_PRODUCT_STATE_ON"]
+        });
+
+        insert_data_item(&mut map, &item, 0);
+
+        assert_eq!(
+            map.get("Data_0").map(|s| s.as_str()),
+            Some("Coro Endpoint Protection")
+        );
+        assert_eq!(
+            map.get("Data_1").map(|s| s.as_str()),
+            Some("SECURITY_PRODUCT_STATE_ON")
+        );
+    }
+
+    #[test]
+    fn application3_extracts_coro_mentions() {
+        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("..")
+            .join("Application3.evtx");
+        if !path.exists() {
+            // Keep unit tests robust if someone removes the sample file.
+            eprintln!("Skipping: sample EVTX not found at {:?}", path);
+            return;
+        }
+
+        let records = parse_evtx_file(
+            path.to_str().expect("non-utf8 sample path"),
+            &no_filters(),
+        )
+        .expect("parse_evtx_file failed");
+
+        // Sanity check that we're not skipping the bulk of the file.
+        assert!(
+            records.len() >= 6500,
+            "Unexpectedly low record count: {}",
+            records.len()
+        );
+
+        let has_coro = records.iter().any(|r| {
+            r.extra_fields
+                .values()
+                .any(|v| v.to_lowercase().contains("coro"))
+        });
+
+        assert!(has_coro, "Expected at least one record mentioning 'Coro'");
+    }
 }

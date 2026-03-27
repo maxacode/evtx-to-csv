@@ -54,6 +54,19 @@ export interface FilterConfig {
   username: string | null;
 
   /**
+   * Keyword search across all fields (case-insensitive substring match).
+   * When set, only matching rows are returned unless keyword_context is also set.
+   */
+  keyword: string | null;
+
+  /**
+   * Optional context window size around each keyword match.
+   * Example: 2 means include up to 2 rows before and 2 rows after each match.
+   * Valid values: 0–5. Null means 0.
+   */
+  keyword_context: number | null;
+
+  /**
    * Filter by an arbitrary field inside the EventData XML blob.
    * The backend will check if the named field exists (and optionally matches a value).
    */
@@ -231,6 +244,8 @@ export function defaultFilters(): FilterConfig {
     hostname: null,
     ip_address: null,
     username: null,
+    keyword: null,
+    keyword_context: null,
     custom_field_name: null,
     custom_field_value: null,
     llm_optimized: false,

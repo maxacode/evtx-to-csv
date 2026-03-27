@@ -177,7 +177,15 @@
     const defaultName =
       (entry.outputName || entry.name.replace(/\.evtx$/i, '')) +
       (doEnrich ? '_enriched' : '');
-    const savePath = await saveFileDialog(defaultName);
+    let savePath: string | null = null;
+    try {
+      savePath = await saveFileDialog(defaultName);
+    } catch (err) {
+      entry.status = 'error';
+      entry.errorMessage = err instanceof Error ? err.message : String(err);
+      notifyUpdate();
+      return;
+    }
 
     // User cancelled the dialog — abort silently
     if (!savePath) return;
@@ -251,7 +259,22 @@
    * Count the number of non-null filter fields currently active.
    * Used to show a badge like "3 filters active" in the collapsed state.
    */
-  $: activeFilterCount = Object.entries(entry.filters).filter(([, v]) => v !== null).length;
+  $: activeFilterCount = (() => {
+    let count = 0;
+    const f = entry.filters;
+    if (f.date_from) count++;
+    if (f.date_to) count++;
+    if (f.relative_days !== null) count++;
+    if (f.process_id) count++;
+    if (f.hostname) count++;
+    if (f.ip_address) count++;
+    if (f.username) count++;
+    if (f.keyword) count++;
+    if (f.custom_field_name) count++;
+    if (f.custom_field_value) count++;
+    if (f.llm_optimized) count++;
+    return count;
+  })();
 
   /**
    * Map status to a display-friendly label for the status badge.

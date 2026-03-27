@@ -171,6 +171,25 @@
     notify();
   }
 
+  /** Update keyword filter and notify parent */
+  function handleKeyword(event: Event) {
+    const value = (event.target as HTMLInputElement).value.trim();
+    filters.keyword = value || null;
+    // If keyword is cleared, also clear context to avoid surprising state
+    if (!filters.keyword) {
+      filters.keyword_context = null;
+    }
+    notify();
+  }
+
+  /** Update keyword_context (0–5) and notify parent */
+  function handleKeywordContext(event: Event) {
+    const raw = (event.target as HTMLSelectElement).value;
+    const n = raw === '' ? null : Number(raw);
+    filters.keyword_context = Number.isFinite(n) ? (n as number) : null;
+    notify();
+  }
+
   /** Update custom_field_name and notify parent */
   function handleCustomFieldName(event: Event) {
     const value = (event.target as HTMLInputElement).value.trim();
@@ -338,6 +357,41 @@
         value={filters.ip_address ?? ''}
         on:input={handleIpAddress}
       />
+    </div>
+
+    <!-- Keyword -->
+    <div class="field">
+      <label class="field-label" for="filter-keyword">Keyword</label>
+      <input
+        id="filter-keyword"
+        class="input"
+        type="text"
+        placeholder="Search any field…"
+        value={filters.keyword ?? ''}
+        on:input={handleKeyword}
+      />
+    </div>
+
+    <!-- Keyword context -->
+    <div class="field">
+      <label class="field-label" for="filter-keyword-context">
+        Context <span class="optional-tag">(optional)</span>
+      </label>
+      <select
+        id="filter-keyword-context"
+        class="input select"
+        disabled={!filters.keyword}
+        value={filters.keyword_context ?? ''}
+        on:change={handleKeywordContext}
+        title="Include rows around each keyword match (before + after)"
+      >
+        <option value="">0 rows</option>
+        <option value="1">1 row before/after</option>
+        <option value="2">2 rows before/after</option>
+        <option value="3">3 rows before/after</option>
+        <option value="4">4 rows before/after</option>
+        <option value="5">5 rows before/after</option>
+      </select>
     </div>
 
   </div>
@@ -517,6 +571,20 @@
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 10px;
+  }
+
+  /* Match input styling for <select> */
+  .select {
+    appearance: none;
+    background-image:
+      linear-gradient(45deg, transparent 50%, var(--color-text-muted) 50%),
+      linear-gradient(135deg, var(--color-text-muted) 50%, transparent 50%);
+    background-position:
+      calc(100% - 16px) calc(50% - 2px),
+      calc(100% - 11px) calc(50% - 2px);
+    background-size: 5px 5px, 5px 5px;
+    background-repeat: no-repeat;
+    padding-right: 28px;
   }
 
   /* -------------------------------------------------------------------------

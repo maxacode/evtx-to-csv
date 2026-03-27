@@ -50,6 +50,46 @@ pub struct AppState {
 }
 
 // ---------------------------------------------------------------------------
+// Persistence Commands
+// ---------------------------------------------------------------------------
+
+fn get_config_path(app_handle: &tauri::AppHandle) -> PathBuf {
+    let data_dir = app_handle.path_resolver().app_local_data_dir()
+        .unwrap_or_else(|| PathBuf::from("."));
+    // Ensure the directory exists
+    let _ = std::fs::create_dir_all(&data_dir);
+    data_dir.join("app_state.json")
+}
+
+#[tauri::command]
+fn save_app_state(
+    app_handle: tauri::AppHandle,
+    state: types::AppStatePersistent,
+) -> Result<(), String> {
+    let path = get_config_path(&app_handle);
+    let content = serde_json::to_string_pretty(&state)
+        .map_err(|e| format!("Serialization error: {}", e))?;
+    std::fs::write(&path, content)
+        .map_err(|e| format!("Failed to write state file: {}", e))?;
+    Ok(())
+}
+
+#[tauri::command]
+fn load_app_state(
+    app_handle: tauri::AppHandle,
+) -> Result<Option<types::AppStatePersistent>, String> {
+    let path = get_config_path(&app_handle);
+    if !path.exists() {
+        return Ok(None);
+    }
+    let content = std::fs::read_to_string(&path)
+        .map_err(|e| format!("Failed to read state file: {}", e))?;
+    let state: types::AppStatePersistent = serde_json::from_str(&content)
+        .map_err(|e| format!("Deserialization error: {}", e))?;
+    Ok(Some(state))
+}
+
+// ---------------------------------------------------------------------------
 // Signatures file resolution and loading
 // ---------------------------------------------------------------------------
 
@@ -165,6 +205,45 @@ fn parse_evtx(
     evtx_parser::parse_evtx_file(&path, &filters)
 }
 
+/// Recursively find all .evtx files in a directory.
+#[tauri::command]
+fn list_evtx_in_dir(path: String, recursive: bool) -> Result<Vec<String>, String> {
+    use std::fs;
+    use std::path::Path;
+
+    fn collect_files(dir: &Path, recursive: bool, acc: &mut Vec<String>) -> std::io::Result<()> {
+        if dir.is_dir() {
+            for entry in fs::read_dir(dir)? {
+                let entry = entry?;
+                let path = entry.path();
+                if path.is_dir() {
+                    if recursive {
+                        collect_files(&path, recursive, acc)?;
+                    }
+                } else if let Some(ext) = path.extension() {
+                    if ext.to_string_lossy().eq_ignore_ascii_case("evtx") {
+                        acc.push(path.to_string_lossy().to_string());
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
+
+    let mut files = Vec::new();
+    let root_path = Path::new(&path);
+    if !root_path.exists() {
+        return Err(format!("Directory does not exist: {}", path));
+    }
+    
+    collect_files(root_path, recursive, &mut files).map_err(|e| e.to_string())?;
+    
+    // Sort files alphabetically for a better UI experience
+    files.sort();
+    
+    Ok(files)
+}
+
 /// Quickly scan an .evtx for record count and date ranges.
 #[tauri::command]
 fn get_evtx_summary(path: String) -> Result<types::FileSummary, String> {
@@ -252,6 +331,15 @@ fn get_signatures_info(
     serde_json::json!({ "count": count, "path": path })
 }
 
+/// Open a native directory picker and return the selected path.
+#[tauri::command]
+async fn select_directory() -> Result<Option<String>, String> {
+    use tauri::api::dialog::blocking::FileDialogBuilder;
+    
+    let path = FileDialogBuilder::new().pick_folder();
+    Ok(path.map(|p| p.to_string_lossy().to_string()))
+}
+
 // ---------------------------------------------------------------------------
 // Application entry point
 // ---------------------------------------------------------------------------
@@ -294,11 +382,15 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             get_evtx_summary,
             parse_evtx,
+            list_evtx_in_dir,
             export_csv,
             run_enrichment_check,
             enrich_records,
             reload_signatures,
             get_signatures_info,
+            save_app_state,
+            load_app_state,
+            select_directory,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

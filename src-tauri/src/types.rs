@@ -155,6 +155,15 @@ pub struct FilterConfig {
     /// EventRecord.username OR EventRecord.target_username.
     pub username: Option<String>,
 
+    /// Keyword search across all fields (case-insensitive substring match).
+    /// When set, only matching rows are returned unless keyword_context is also set.
+    pub keyword: Option<String>,
+
+    /// Optional context window size around each keyword match.
+    /// Example: 2 means include up to 2 rows before and 2 rows after each match.
+    /// Valid values: 0–5. None means 0.
+    pub keyword_context: Option<u32>,
+
     /// Name of an arbitrary EventData field to filter on (e.g. "SubStatus").
     /// Works together with `custom_field_value`; if only this is set, the
     /// filter keeps any record that has the named field present at all.
@@ -217,4 +226,57 @@ pub struct FileSummary {
     pub total_records: usize,
     /// Top 5 Event IDs by frequency
     pub event_ids: HashMap<u32, usize>,
+}
+
+// ---------------------------------------------------------------------------
+// FileEntry
+//
+// Represents one loaded .evtx file in the frontend.
+// ---------------------------------------------------------------------------
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub struct FileEntry {
+    pub id: String,
+    pub path: String,
+    pub name: String,
+    pub summary: Option<FileSummary>,
+    pub filters: FilterConfig,
+    pub output_name: String,
+    pub status: String,
+    pub record_count: usize,
+    pub error_message: Option<String>,
+}
+
+// ---------------------------------------------------------------------------
+// AppSettings
+//
+// Global configuration for the application.
+// ---------------------------------------------------------------------------
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub struct AppSettings {
+    pub default_export_dir: Option<String>,
+    pub custom_signatures_path: Option<String>,
+}
+
+impl Default for AppSettings {
+    fn default() -> Self {
+        Self {
+            default_export_dir: None,
+            custom_signatures_path: None,
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// AppStatePersistent
+//
+// The top-level structure for state that survives application restarts.
+// ---------------------------------------------------------------------------
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub struct AppStatePersistent {
+    pub files: Vec<FileEntry>,
+    pub run_enrichment: bool,
+    pub settings: AppSettings,
 }

@@ -31,6 +31,51 @@ use chrono::{DateTime, Duration, Utc};
 
 use crate::types::{EventRecord, FilterConfig};
 
+fn contains_case_insensitive(haystack: &str, needle_lower: &str) -> bool {
+    haystack.to_lowercase().contains(needle_lower)
+}
+
+fn record_matches_keyword(record: &EventRecord, keyword_lower: &str) -> bool {
+    if keyword_lower.is_empty() {
+        return true;
+    }
+
+    // System + known fields
+    if contains_case_insensitive(&record.timestamp, keyword_lower) { return true; }
+    if contains_case_insensitive(&record.event_id.to_string(), keyword_lower) { return true; }
+    if contains_case_insensitive(&record.level, keyword_lower) { return true; }
+    if contains_case_insensitive(&record.channel, keyword_lower) { return true; }
+    if contains_case_insensitive(&record.computer, keyword_lower) { return true; }
+
+    let check_opt = |opt: &Option<String>| -> bool {
+        opt.as_deref()
+            .map(|s| contains_case_insensitive(s, keyword_lower))
+            .unwrap_or(false)
+    };
+
+    if check_opt(&record.username) { return true; }
+    if check_opt(&record.domain) { return true; }
+    if check_opt(&record.process_id) { return true; }
+    if check_opt(&record.process_name) { return true; }
+    if check_opt(&record.ip_address) { return true; }
+    if check_opt(&record.port) { return true; }
+    if check_opt(&record.logon_type) { return true; }
+    if check_opt(&record.command_line) { return true; }
+    if check_opt(&record.parent_process) { return true; }
+    if check_opt(&record.target_username) { return true; }
+    if check_opt(&record.target_domain) { return true; }
+    if check_opt(&record.workstation) { return true; }
+    if check_opt(&record.auth_package) { return true; }
+
+    // Extra fields (keys and values)
+    for (k, v) in &record.extra_fields {
+        if contains_case_insensitive(k, keyword_lower) { return true; }
+        if contains_case_insensitive(v, keyword_lower) { return true; }
+    }
+
+    false
+}
+
 /// Apply all active filters from `filters` to `records`, returning only those
 /// records that match every filter that is set. Consumes `records` and returns
 /// a new filtered Vec (avoiding in-place mutation, which would complicate
@@ -86,7 +131,7 @@ pub fn apply_filters(records: Vec<EventRecord>, filters: &FilterConfig) -> Vec<E
     // `.into_iter().filter().collect()` is idiomatic Rust for this pattern.
     // We use a closure that returns `bool`; all conditions must be true.
     // ------------------------------------------------------------------
-    records
+    let mut filtered: Vec<EventRecord> = records
         .into_iter()
         .filter(|record| {
             // ---- Time lower-bound check --------------------------------
@@ -196,5 +241,40 @@ pub fn apply_filters(records: Vec<EventRecord>, filters: &FilterConfig) -> Vec<E
             // All active filters passed — include this record in the output
             true
         })
-        .collect()
+        .collect();
+
+    // ------------------------------------------------------------------
+    // Keyword search with optional context window
+    // ------------------------------------------------------------------
+    let keyword = filters
+        .keyword
+        .as_deref()
+        .map(|s| s.trim())
+        .filter(|s| !s.is_empty());
+
+    if let Some(keyword) = keyword {
+        let keyword_lower = keyword.to_lowercase();
+        let ctx = filters.keyword_context.unwrap_or(0).min(5) as usize;
+
+        let mut include: Vec<bool> = vec![false; filtered.len()];
+
+        for (i, record) in filtered.iter().enumerate() {
+            if record_matches_keyword(record, &keyword_lower) {
+                let start = i.saturating_sub(ctx);
+                let end = (i + ctx).min(filtered.len().saturating_sub(1));
+                for j in start..=end {
+                    include[j] = true;
+                }
+            }
+        }
+
+        filtered = filtered
+            .into_iter()
+            .enumerate()
+            .filter(|(i, _)| include[*i])
+            .map(|(_, r)| r)
+            .collect();
+    }
+
+    filtered
 }
